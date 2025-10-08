@@ -1,4 +1,4 @@
-require('dotenv').config({ quiet: true })
+require('dotenv').config({ path: '/etc/app.env', quiet: true })
 const express = require('express')
 const sequelize = require('./db')
 const models = require('./models/models')
