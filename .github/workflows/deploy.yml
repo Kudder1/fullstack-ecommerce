@@ -20,17 +20,7 @@ jobs:
           npm ci
           npm run build
 
-      # 3️⃣ Clean public folder on EC2 BEFORE copying
-      - name: Clean server/public on EC2
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            rm -rf ~/app/server/public/*
-
-      # 4️⃣ Copy ONLY dist contents to server/public
+      # 2️⃣ Copy ONLY dist contents to server/public
       - name: Copy frontend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -40,7 +30,7 @@ jobs:
           source: "client/dist/*"          # copy all files inside dist
           target: "~/app/server/public"
           strip_components: 2  # Remove "client/dist/" from the path
-          rm: false
+          overwrite: true
 
       # 3️⃣ Copy backend to EC2
       - name: Copy backend to EC2
@@ -50,8 +40,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "server/*"
-          target: "~/app/server"
-          rm: false
+          target: "~/app"
+          strip_components: 0
+          overwrite: true
           exclude: |
             node_modules
             .env
