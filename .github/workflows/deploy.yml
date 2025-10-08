@@ -44,6 +44,7 @@ jobs:
           exclude: |
             node_modules
             .env
+            public
 
       # 4️⃣ Install backend dependencies and restart Node on EC2
       - name: Restart backend
