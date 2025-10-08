@@ -39,6 +39,7 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "client/dist/*"          # copy all files inside dist
           target: "~/app/server/public"
+          strip_components: 2  # Remove "client/dist/" from the path
           rm: false
 
       # 3️⃣ Copy backend to EC2
