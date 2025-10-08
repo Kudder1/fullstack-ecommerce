@@ -13,45 +13,47 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Copy files to EC2
+      # 1️⃣ Build React locally in GitHub Actions
+      - name: Build React
+        run: |
+          cd client
+          npm ci
+          npm run build
+
+      # 2️⃣ Copy React build to EC2
+      - name: Copy frontend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "."
-          target: "~/app"
+          source: "client/dist/*"
+          target: "~/app/server/public"
           rm: true
+
+      # 3️⃣ Copy backend to EC2
+      - name: Copy backend to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "server/*"
+          target: "~/app/server"
+          rm: false
           exclude: |
             node_modules
-            .git
             .env
 
-      - name: Build and restart on EC2
+      # 4️⃣ Install backend dependencies and restart Node on EC2
+      - name: Restart backend
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/app
-
-            # Build client
-            cd client
+            cd ~/app/server
             npm ci
-            npm run build
-
-            # Move build files to server's public folder
-            rm -rf ../server/public
-            mkdir -p ../server/public
-            cp -r dist/* ../server/public/
-
-            # Install backend deps and restart
-            cd ../server
-            npm ci
-
-            # Start or restart the server
             pm2 describe myapp > /dev/null 2>&1 && pm2 restart myapp || pm2 start index.js --name "myapp"
-
-            # Save PM2 config so it auto-starts on reboot
             pm2 save
