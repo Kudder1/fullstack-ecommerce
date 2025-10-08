@@ -18,12 +18,13 @@ const NavBar = observer(() => {
             });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [pathname]);
     
     const logOut = () => {
         localStorage.removeItem('token')
         user.setUser({})
         user.setIsAuth(false)
+        cart.setTotalItems(0)
     }
 
     return (

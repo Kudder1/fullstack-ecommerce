@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '/etc/app.env', quiet: true })
+require('dotenv').config({ path: process.env.NODE_ENV !== 'development' ? '/etc/app.env' : undefined, quiet: true })
 const express = require('express')
 const sequelize = require('./db')
 const models = require('./models/models')
@@ -16,7 +16,7 @@ app.use(express.json({ limit: '50mb' }))
 app.use(express.static(path.resolve(__dirname, 'static')))
 app.use(fileupload({}))
 
-// API routes ONLY
+// API routes
 app.use('/api', router)
 
 // Error handler for API routes ONLY
@@ -26,8 +26,16 @@ app.use('/api', errorHandler)
 const frontendPath = path.resolve(__dirname, 'public')
 app.use(express.static(frontendPath))
 
-// Fallback for React Router - serves HTML for any non-API route
-app.get(/^\/(?!api).*/, (req, res) => {
+// Fallback for React Router - only for routes that don't match static files
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next()
+  }
+
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    return res.status(404).json({ error: 'File not found' })
+  }
+
   res.sendFile(path.join(frontendPath, 'index.html'))
 })
 

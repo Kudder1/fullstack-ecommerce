@@ -16,7 +16,11 @@ export const login = async (email, password) => {
 }
 
 export const check = async () => {
-  const response = await fetchGetAuth(`/user/auth`);
-  localStorage.setItem('token', response.token);
-  return jwtDecode(response.token);
+  try {
+    const response = await fetchGetAuth(`/user/auth`);
+    localStorage.setItem('token', response.token);
+    return jwtDecode(response.token);
+  } catch {
+    localStorage.removeItem('token');
+  }
 }
