@@ -1,0 +1,167 @@
+/* Auth.css - Clean minimal login form styles */
+
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.auth-card {
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: #343a40;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+}
+
+.auth-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 2rem 0;
+  letter-spacing: -0.025em;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  border-radius: 6px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  outline: none;
+  border: 0;
+  box-sizing: border-box;
+  box-shadow: none;
+}
+
+.auth-input::placeholder {
+  font-weight: 400;
+}
+
+.auth-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.auth-input:hover {
+  border-color: #c6d0db;
+}
+
+.auth-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.auth-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6c757d;
+  flex: 1;
+}
+
+.auth-link {
+  color: #007bff;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.auth-button {
+  background-color: transparent;
+  border: 2px solid #28a745;
+  color: #28a745;
+  padding: 0.625rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  min-width: 80px;
+}
+
+.auth-button:hover {
+  background-color: #28a745;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+}
+
+.auth-button:focus {
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+}
+
+.auth-button:active {
+  transform: translateY(0);
+}
+
+/* Responsive design */
+@media (max-width: 480px) {
+  .auth-container {
+    padding: 1rem 0.5rem;
+  }
+  
+  .auth-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .auth-title {
+    font-size: 1.5rem;
+  }
+  
+  .auth-footer {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .auth-button {
+    width: 100%;
+    margin-top: 0.5rem;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .auth-input,
+  .auth-button,
+  .auth-link {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .auth-card {
+    border: 2px solid #000;
+  }
+  
+  .auth-input {
+    border-color: #000;
+  }
+  
+  .auth-button {
+    border-width: 3px;
+  }
+}
