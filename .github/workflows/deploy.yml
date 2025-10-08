@@ -20,19 +20,40 @@ jobs:
           npm ci
           npm run build
 
-      # 2️⃣ Copy ONLY dist contents to server/public
+      # 2️⃣ Setup /var/www/myapp directory (one-time migration)
+      - name: Setup new app directory
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Create directory if it doesn't exist
+            sudo mkdir -p /var/www/myapp
+            sudo chown -R ubuntu:ubuntu /var/www/myapp
+            
+            # One-time migration: move old app if it exists
+            if [ -d ~/app ] && [ ! -f /var/www/myapp/.migrated ]; then
+              echo "Migrating from ~/app to /var/www/myapp..."
+              pm2 stop myapp || true
+              pm2 delete myapp || true
+              cp -r ~/app/* /var/www/myapp/ 2>/dev/null || true
+              touch /var/www/myapp/.migrated
+            fi
+
+      # 3️⃣ Copy ONLY dist contents to server/public
       - name: Copy frontend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "client/dist/*"          # copy all files inside dist
-          target: "~/app/server/public"
-          strip_components: 2  # Remove "client/dist/" from the path
+          source: "client/dist/*"
+          target: "/var/www/myapp/server/public"
+          strip_components: 2
           overwrite: true
 
-      # 3️⃣ Copy backend to EC2
+      # 4️⃣ Copy backend to EC2
       - name: Copy backend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -40,7 +61,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "server/*"
-          target: "~/app"
+          target: "/var/www/myapp"
           strip_components: 0
           overwrite: true
           exclude: |
@@ -48,7 +69,7 @@ jobs:
             .env
             public
 
-      # 4️⃣ Install backend dependencies and restart Node on EC2
+      # 5️⃣ Install backend dependencies and restart Node on EC2
       - name: Restart backend
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -56,7 +77,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/app/server
+            cd /var/www/myapp/server
             npm ci
             pm2 describe myapp > /dev/null 2>&1 && pm2 restart myapp || pm2 start index.js --name "myapp"
             pm2 save
