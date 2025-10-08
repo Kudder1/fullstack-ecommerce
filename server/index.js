@@ -15,20 +15,22 @@ app.use(cors())
 app.use(express.json({ limit: '50mb' }))
 app.use(express.static(path.resolve(__dirname, 'static')))
 app.use(fileupload({}))
+
+// API routes - MUST come before static files and fallback
 app.use('/api', router)
+
+// Error handling for API routes - MUST come before React fallback
+app.use(errorHandler)
 
 // --- Serve React frontend ---
 const frontendPath = path.resolve(__dirname, 'public')
 app.use(express.static(frontendPath))
 
 // Fallback route for React Router (handle client-side routing)
-app.get(/^(?!\/api).*/, (req, res) => {
+// This MUST be the absolute last route
+app.get('*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'))
 })
-
-// Error handling, the last middleware
-// As it is the last, we do not call next() inside it
-app.use(errorHandler)
 
 const start = async () => {
   try {
