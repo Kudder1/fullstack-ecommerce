@@ -22,7 +22,7 @@ const frontendPath = path.resolve(__dirname, 'public')
 app.use(express.static(frontendPath))
 
 // Fallback route for React Router
-app.get('/:path(*)', (req, res) => {
+app.get('*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'))
 })
 
