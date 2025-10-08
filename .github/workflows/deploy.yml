@@ -13,14 +13,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1️⃣ Build React locally in GitHub Actions
+      # Create .env file for production build
+      - name: Create production .env
+        run: |
+          cd client
+          echo "VITE_API_URL=http://${{ secrets.EC2_HOST }}/api" > .env
+          echo "VITE_SERVER_URL=http://${{ secrets.EC2_HOST }}/" >> .env
+
+      # Build React locally in GitHub Actions
       - name: Build React
         run: |
           cd client
           npm ci
           npm run build
 
-      # 2️⃣ Setup /var/www/myapp directory (one-time migration)
+      # Setup /var/www/myapp directory (one-time migration)
       - name: Setup new app directory
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -41,7 +48,7 @@ jobs:
               touch /var/www/myapp/.migrated
             fi
 
-      # 3️⃣ Copy ONLY dist contents to server/public
+      # Copy ONLY dist contents to server/public
       - name: Copy frontend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -53,7 +60,7 @@ jobs:
           strip_components: 2
           overwrite: true
 
-      # 4️⃣ Copy backend to EC2
+      # Copy backend to EC2
       - name: Copy backend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -69,7 +76,7 @@ jobs:
             .env
             public
 
-      # 5️⃣ Install backend dependencies and restart Node on EC2
+      # Install backend dependencies and restart Node on EC2
       - name: Restart backend
         uses: appleboy/ssh-action@v1.2.0
         with:
