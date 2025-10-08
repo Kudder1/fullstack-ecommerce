@@ -28,7 +28,7 @@ app.use(express.static(frontendPath))
 
 // Fallback route for React Router (handle client-side routing)
 // This MUST be the absolute last route
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'))
 })
 
