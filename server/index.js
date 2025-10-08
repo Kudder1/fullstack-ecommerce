@@ -27,7 +27,7 @@ const frontendPath = path.resolve(__dirname, 'public')
 app.use(express.static(frontendPath))
 
 // Fallback for React Router - serves HTML for any non-API route
-app.get('*', (req, res) => {
+app.get(/^\/(?!api).*/, (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'))
 })
 
