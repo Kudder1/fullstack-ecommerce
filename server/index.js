@@ -13,30 +13,8 @@ const PORT = process.env.PORT || 5000
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '50mb' }))
-app.use(fileupload({}))
-
-// Serve static files FIRST (images, etc.) - before any other routes
-app.use((req, res, next) => {
-  if (req.path.match(/\.(jpg|jpeg|png|gif|svg|ico)$/)) {
-    console.log('=== IMAGE REQUEST DEBUG ===')
-    console.log('Request path:', req.path)
-    console.log('__dirname:', __dirname)
-    console.log('Static path:', path.resolve(__dirname, 'static'))
-    
-    const fs = require('fs')
-    const staticDir = path.resolve(__dirname, 'static')
-    console.log('Static directory exists:', fs.existsSync(staticDir))
-    
-    // The file Express will look for (removing leading slash)
-    const fileName = req.path.substring(1)
-    const fullPath = path.join(staticDir, fileName)
-    console.log('Looking for file:', fullPath)
-    console.log('File exists:', fs.existsSync(fullPath))
-    console.log('=========================')
-  }
-  next()
-})
 app.use(express.static(path.resolve(__dirname, 'static')))
+app.use(fileupload({}))
 
 // API routes
 app.use('/api', router)
@@ -48,14 +26,16 @@ app.use('/api', errorHandler)
 const frontendPath = path.resolve(__dirname, 'public')
 app.use(express.static(frontendPath))
 
-// React Router fallback - serve React app for non-API, non-static routes
-app.use((req, res) => {
-  // Don't serve React app for API routes
+// Fallback for React Router - only for routes that don't match static files
+app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
-    return res.status(404).json({ error: 'API route not found' })
+    return next()
   }
-  
-  // For React Router routes, serve the React app
+
+  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
+    return res.status(404).json({ error: 'File not found' })
+  }
+
   res.sendFile(path.join(frontendPath, 'index.html'))
 })
 
