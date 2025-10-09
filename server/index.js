@@ -13,8 +13,16 @@ const PORT = process.env.PORT || 5000
 const app = express()
 app.use(cors())
 app.use(express.json({ limit: '50mb' }))
-app.use(express.static(path.resolve(__dirname, 'static')))
 app.use(fileupload({}))
+
+// Serve static files FIRST (images, etc.) - before any other routes
+app.use((req, res, next) => {
+  if (req.path.match(/\.(jpg|jpeg|png|gif|svg|ico)$/)) {
+    console.log('Static file request:', req.path)
+  }
+  next()
+})
+app.use(express.static(path.resolve(__dirname, 'static')))
 
 // API routes
 app.use('/api', router)
@@ -26,16 +34,16 @@ app.use('/api', errorHandler)
 const frontendPath = path.resolve(__dirname, 'public')
 app.use(express.static(frontendPath))
 
-// Fallback for React Router - only for routes that don't match static files
-app.use((req, res, next) => {
+// React Router fallback - serve React app for non-API, non-static routes
+app.use((req, res) => {
+  console.log('Fallback middleware hit:', req.path)
+  
+  // Don't serve React app for API routes
   if (req.path.startsWith('/api')) {
-    return next()
+    return res.status(404).json({ error: 'API route not found' })
   }
-
-  if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/)) {
-    return res.status(404).json({ error: 'File not found' })
-  }
-
+  
+  // For React Router routes, serve the React app
   res.sendFile(path.join(frontendPath, 'index.html'))
 })
 
