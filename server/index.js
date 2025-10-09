@@ -18,7 +18,21 @@ app.use(fileupload({}))
 // Serve static files FIRST (images, etc.) - before any other routes
 app.use((req, res, next) => {
   if (req.path.match(/\.(jpg|jpeg|png|gif|svg|ico)$/)) {
-    console.log('Static file request:', req.path)
+    console.log('=== IMAGE REQUEST DEBUG ===')
+    console.log('Request path:', req.path)
+    console.log('__dirname:', __dirname)
+    console.log('Static path:', path.resolve(__dirname, 'static'))
+    
+    const fs = require('fs')
+    const staticDir = path.resolve(__dirname, 'static')
+    console.log('Static directory exists:', fs.existsSync(staticDir))
+    
+    // The file Express will look for (removing leading slash)
+    const fileName = req.path.substring(1)
+    const fullPath = path.join(staticDir, fileName)
+    console.log('Looking for file:', fullPath)
+    console.log('File exists:', fs.existsSync(fullPath))
+    console.log('=========================')
   }
   next()
 })
@@ -36,8 +50,6 @@ app.use(express.static(frontendPath))
 
 // React Router fallback - serve React app for non-API, non-static routes
 app.use((req, res) => {
-  console.log('Fallback middleware hit:', req.path)
-  
   // Don't serve React app for API routes
   if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'API route not found' })
