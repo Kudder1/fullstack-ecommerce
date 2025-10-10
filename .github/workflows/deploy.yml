@@ -17,8 +17,8 @@ jobs:
       - name: Create production .env
         run: |
           cd client
-          echo "VITE_API_URL=https://${{ secrets.EC2_HOST }}/api" > .env
-          echo "VITE_SERVER_URL=https://${{ secrets.EC2_HOST }}/" >> .env
+          echo "VITE_API_URL=https://${{ secrets.EC2_DOMAIN }}/api" > .env
+          echo "VITE_SERVER_URL=https://${{ secrets.EC2_DOMAIN }}/" >> .env
 
       # Build React locally in GitHub Actions
       - name: Build React
