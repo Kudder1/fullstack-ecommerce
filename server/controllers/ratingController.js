@@ -17,7 +17,11 @@ class RatingController {
         device.averageRating = averageRating
         await device.save()
 
-        return res.json(rating)
+        const response = {
+            ...rating.toJSON(),
+            averageRating
+        }
+        return res.json(response)
     }
     async getAllUsersRatedDevices(req, res) {
         const { id: userId } = req.user

@@ -3,9 +3,10 @@ import { useParams } from "react-router-dom"
 import { fetchOneDevice, rateDevice } from "../http/deviceAPI"
 import { addToCart } from "../http/cartAPI"
 import { Context } from "../main"
+import { addToLocalCart } from "../utils/helpers"
 
 const DevicePage = () => {
-  const { cart } = useContext(Context)
+  const { cart, user } = useContext(Context)
   const { id } = useParams()
   const [device, setDevice] = useState({info: []})
 
@@ -18,12 +19,17 @@ const DevicePage = () => {
   const onRate = async (e) => {
     const rating = e.target.value
     const updatedRating = await rateDevice(id, rating)
-    setDevice({...device, averageRating: updatedRating.rate})
+    setDevice({...device, averageRating: updatedRating.averageRating})
   }
 
   const onAddToCartClick = async() => {
-    const { totalItems } = await addToCart(device.id)
-    cart.setTotalItems(totalItems)
+    if (user.isAuth) {
+      const { totalItems } = await addToCart(device.id)
+      cart.setTotalItems(totalItems)
+    } else {
+      const totalItems = addToLocalCart(device)
+      cart.setTotalItems(totalItems)
+    }
   }
 
   return (

@@ -23,6 +23,8 @@
     font-size: 1rem;
     font-weight: 400;
     line-height: 1.5;
+    text-align: left;
+    border-radius: 0;
 }
 
 .list-group-item:first-child {

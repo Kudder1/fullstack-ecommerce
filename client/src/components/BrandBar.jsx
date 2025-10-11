@@ -13,9 +13,9 @@ const BrandBar = observer(() => {
                         className={`card brand-card ${brand.id === device.selectedBrand.id ? 'card-selected' : ''}`}
                         onClick={() => device.setSelectedBrand(brand)}
                     >
-                        <div className="card-body">
+                        <button className="card-body">
                             {brand.name}
-                        </div>
+                        </button>
                     </div>
                 </div>
             )}

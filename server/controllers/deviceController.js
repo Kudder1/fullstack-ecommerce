@@ -72,7 +72,8 @@ class DeviceController {
             where,
             limit,
             offset,
-            include: [{ model: Brand }]
+            include: [{ model: Brand }],
+            order: [['createdAt', 'ASC']]
         })
         return res.json(devices)
     }

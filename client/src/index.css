@@ -655,6 +655,7 @@ img {
     text-align: center;
     min-width: 80px;
     line-height: 1.4;
+    background: inherit;
 }
 
 /* Card Variants */

@@ -6,6 +6,7 @@ import { useContext, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { getCart } from '../http/cartAPI';
 import { useLocation } from 'react-router-dom';
+import { getLocalCart } from '../utils/helpers';
 
 const NavBar = observer(() => {
     const { user, cart } = useContext(Context)
@@ -13,9 +14,14 @@ const NavBar = observer(() => {
 
     useEffect(() => {
         if (pathname !== BASKET_ROUTE) {
-            getCart().then(data => {
-                cart.setTotalItems(data.totalItems)
-            });
+            if (user.isAuth) {
+                getCart().then(data => {
+                    cart.setTotalItems(data.totalItems)
+                })
+            } else {
+                const localCart = getLocalCart()
+                if (localCart) cart.setTotalItems(localCart.totalItems)
+            }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pathname]);
@@ -24,7 +30,6 @@ const NavBar = observer(() => {
         localStorage.removeItem('token')
         user.setUser({})
         user.setIsAuth(false)
-        cart.setTotalItems(0)
     }
 
     return (

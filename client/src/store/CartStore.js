@@ -5,7 +5,7 @@ export default class CartStore {
         this._cartItems = [];
         this._totalItems = 0;
         this._totalPrice = 0;
-        this._itemCount = 0;
+        this._deviceCount = 0;
         makeAutoObservable(this);
     }
     setCartItems(cartItems) {
@@ -17,8 +17,8 @@ export default class CartStore {
     setTotalPrice(price) {
         this._totalPrice = price;
     }
-    setItemCount(count) {
-        this._itemCount = count;
+    setDeviceCount(count) {
+        this._deviceCount = count;
     }
     get cartItems() {
         return this._cartItems;
@@ -29,7 +29,7 @@ export default class CartStore {
     get totalPrice() {
         return this._totalPrice;
     }
-    get itemCount() {
-        return this._itemCount;
+    get deviceCount() {
+        return this._deviceCount;
     }
 }

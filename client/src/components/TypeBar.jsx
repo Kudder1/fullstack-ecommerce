@@ -8,13 +8,13 @@ const TypeBar = observer(() => {
     return (
         <div className="list-group">
             {device.types.map(type =>
-                <div 
+                <button 
                     className={`list-group-item ${type.id === device.selectedType.id ? 'active' : ''}`}
                     onClick={() => device.setSelectedType(type) }
                     key={type.id}
                 >
                     {type.name}
-                </div>
+                </button>
             )}
         </div>
     );

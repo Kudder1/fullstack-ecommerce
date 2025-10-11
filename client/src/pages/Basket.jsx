@@ -3,6 +3,7 @@ import './Basket.css';
 import { Context } from '../main';
 import { getCart, updateCart } from '../http/cartAPI';
 import { observer } from 'mobx-react-lite';
+import { getLocalCart, updateLocalCart } from '../utils/helpers';
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat('en-US', {
@@ -12,29 +13,44 @@ const formatPrice = (price) => {
 }
 
 export const Basket = observer(() => {
-  const { cart } = useContext(Context);
+  const { user, cart } = useContext(Context);
 
   const updateCartState = (data) => {
     cart.setCartItems(data.basket);
     cart.setTotalItems(data.totalItems);
     cart.setTotalPrice(data.totalPrice);
-    cart.setItemCount(data.itemCount);
+    cart.setDeviceCount(data.deviceCount);
   };
 
   useEffect(() => {
-    getCart().then(data => {
-      updateCartState(data);
-    });
+    if (user.isAuth) {
+      getCart().then(data => {
+        updateCartState(data)
+      })
+    } else {
+      const localCart = getLocalCart()
+      if (localCart) updateCartState(localCart)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const updateQuantity = async (id, newQuantity) => {
-    const data = await updateCart(id, newQuantity);
+    let data
+    if (user.isAuth) {
+      data = await updateCart(id, newQuantity);
+    } else {
+      data = updateLocalCart(id, newQuantity);
+    }
     updateCartState(data);
   };
 
   const removeItem = async (id) => {
-    const data = await updateCart(id, 0);
+    let data
+    if (user.isAuth) {
+      data = await updateCart(id, 0);
+    } else {
+      data = updateLocalCart(id, 0);
+    }
     updateCartState(data);
   };
 
@@ -57,7 +73,6 @@ export const Basket = observer(() => {
     <div className="container">
       <div className="basket-page">
         <div className="row">
-          {/* Cart Items */}
           <div className="col-lg-8">
             <div className="cart-section">
               <div className="cart-header">
@@ -82,7 +97,7 @@ export const Basket = observer(() => {
 
                     <div className="item-details">
                       <h4 className="item-name">{item.device.name}</h4>
-                      <p className="item-brand">{item.device.brand}</p>
+                      <p className="item-brand">{item.device.brand?.name}</p>
                       {/* {!item.device.inStock && (
                         <p className="text-danger">Товар временно недоступен</p>
                       )} */}
@@ -140,8 +155,6 @@ export const Basket = observer(() => {
               </div>
             </div>
           </div>
-
-          {/* Order Summary */}
           <div className="col-lg-4">
             <div className="order-summary">
               <h3>Итого по заказу</h3>

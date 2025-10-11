@@ -19,7 +19,11 @@ const Auth = observer(() => {
     e.preventDefault();
     try {
       let data
-      isLogin ? data = await login(email, password) : data = await registration(email, password)
+      if (isLogin) {
+        data = await login(email, password)
+      } else {
+        data = await registration(email, password)
+      }
       user.setUser(data)
       user.setIsAuth(true)
       navigate(SHOP_ROUTE)

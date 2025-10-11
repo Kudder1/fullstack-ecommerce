@@ -1,40 +1,63 @@
 const ApiError = require("../error/ApiError")
-const { Basket, BasketDevice, Device } = require("../models/models")
+const { Basket, BasketDevice, Device, Brand } = require("../models/models")
 
-// [{
-//    id
-//    quantity
-//    updatedAt
-//    basketId
-//    deviceId
-// }]
-
-async function mergeBaskets(dbBasket, questBasket) {
-    // compare timestamp of each duplicate item (same id)
-    // questTimestamp needs to be validated
-    // apply merge strategy
-    // insert/update basket_devices
-    return dbBasket
+async function mergeBaskets(dbBasketRaw, questCart, dbBasketId) {
+    const dbBasket = dbBasketRaw.toJSON()
+    if (!dbBasket.basket_devices.length) {
+        const createPromises = questCart.basket.map(item => 
+            BasketDevice.create({
+                basketId: dbBasketId, 
+                deviceId: item.device.id, 
+                quantity: item.quantity 
+            })
+        )
+        await Promise.all(createPromises)
+    } else {
+        const dbDevicesMap = new Map()
+        dbBasket.basket_devices.forEach(device => {
+            dbDevicesMap.set(device.deviceId, device)
+        })
+        const createPromises = []
+        questCart.basket.forEach(item => {
+            if (dbDevicesMap.has(item.deviceId)) {
+                createPromises.push(
+                    BasketDevice.update(
+                        // { quantity: sequelize.literal('quantity + ' + item.quantity) }, // This creates SQL: quantity = quantity + 5
+                        { quantity: item.quantity },
+                        { where: { basketId: dbBasketId, deviceId: item.deviceId } }
+                    )
+                )
+            } else {
+                createPromises.push(
+                    BasketDevice.create({
+                        basketId: dbBasketId, 
+                        deviceId: item.device.id, 
+                        quantity: item.quantity 
+                    })
+                )
+            }
+        })
+        await Promise.all(createPromises)
+    }
 }
 
 function getBasketTotals(basket) {
-    const itemCount = basket.length
+    const deviceCount = basket.length
     const totalItems = basket.reduce((acc, item) => acc + item.quantity, 0)
     const totalPrice = basket.reduce((acc, item) => acc + item.device.price * item.quantity, 0)
-    return { basket, itemCount, totalItems, totalPrice }
+    return { basket, deviceCount, totalItems, totalPrice }
 }
 
 class CartController {
-    // basket should be created on user login as a separate request
     async create(req, res) {
         const { questBasket } = req.body
         const { id: userId } = req.user
-        let basket = await Basket.findOne({ where: { userId } })
+        let basket = await Basket.findOne({ where: { userId }, include: [{ model: BasketDevice }] })
         if (questBasket) {
             if (!basket) {
                 basket = await Basket.create({ userId })
             }
-            mergeBaskets(basket, questBasket)
+            await mergeBaskets(basket, questBasket, basket.id)
             return res.json(basket)
         }
         if (!basket) {
@@ -49,11 +72,15 @@ class CartController {
             include: [{
                 model: BasketDevice,
                 include: [{
-                    model: Device
+                    model: Device,
+                    include: [{
+                        model: Brand
+                    }]
                 }]
             }]
         })
-        return res.json(getBasketTotals(basket.basket_devices))
+        const basketDevices = basket ? basket.basket_devices : []
+        return res.json(getBasketTotals(basketDevices))
     }
     async add(req, res, next) {
         const { id: userId } = req.user
