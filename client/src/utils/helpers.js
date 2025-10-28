@@ -1,3 +1,19 @@
+import { addToCart, generateGuestToken } from "../http/cartAPI"
+
+export const addToCartWrapper = async (device, isAuth) => {
+    if (isAuth) {
+        const { totalItems } = await addToCart(device.id)
+        return totalItems
+    } else {
+        const cart = getLocalCart()
+        if (!cart || !cart.basket.length) {
+            generateGuestToken()
+        }
+        const totalItems = addToLocalCart(device)
+        return totalItems
+    }
+}
+
 export const addToLocalCart = (device) => {
    const date = new Date().toISOString()
    const cart = JSON.parse(localStorage.getItem('cart'))

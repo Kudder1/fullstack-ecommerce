@@ -1,10 +1,11 @@
 import { useContext, useState } from 'react';
 import './Auth.css';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { LOGIN_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE } from '../utils/constants'
-import { registration, login } from '../http/userAPI';
+import { LOGIN_ROUTE, PASSWORD_RECOVERY_ROUTE, REGISTRATION_ROUTE, SHOP_ROUTE } from '../utils/constants'
+import { registration, login, loginGoogle } from '../http/userAPI';
 import { observer } from 'mobx-react-lite';
 import { Context } from '../main';
+import { useGoogleLogin } from '@react-oauth/google';
 
 const Auth = observer(() => {
   const { user } = useContext(Context)
@@ -31,6 +32,19 @@ const Auth = observer(() => {
       alert(err.message);
     }
   }
+
+  const googleLogin = useGoogleLogin({
+    flow: 'auth-code',
+    onSuccess: async (tokenResponse) => {
+      const data = await loginGoogle(tokenResponse.code)
+      user.setUser(data)
+      user.setIsAuth(true)
+      navigate(SHOP_ROUTE)
+    },
+    onError: () => {
+      alert('Login Failed')
+    },
+  })
 
   return (
     <div className="auth-container">
@@ -67,8 +81,18 @@ const Auth = observer(() => {
                 <NavLink to={REGISTRATION_ROUTE} className="auth-link"> Зарегистрируйся</NavLink>
                 </p>
             )}
+             <p className="auth-text">
+                Забыл пароль? <br />
+                <NavLink to={PASSWORD_RECOVERY_ROUTE} className="auth-link">Восстановить</NavLink>
+              </p>
           </div>
           <button>{isLogin ? "Войти" : "Регистрация"}</button>
+          <button
+            type="button"
+            onClick={googleLogin}
+          >
+            Login with Google
+          </button>
         </form>
       </div>
     </div>

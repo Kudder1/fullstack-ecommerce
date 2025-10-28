@@ -19,7 +19,8 @@ const fetchWrapper = async (url, options = {}, useAuth = true) => {
 
   const requestOptions = {
     ...options,
-    headers
+    headers,
+    credentials: 'include',
   };
 
   const response = await fetch(API_URL + url, requestOptions);

@@ -1,7 +1,7 @@
 import { useEffect, useContext } from 'react';
 import './Basket.css';
 import { Context } from '../main';
-import { getCart, updateCart } from '../http/cartAPI';
+import { createCheckout, getCart, updateCart } from '../http/cartAPI';
 import { observer } from 'mobx-react-lite';
 import { getLocalCart, updateLocalCart } from '../utils/helpers';
 
@@ -21,6 +21,18 @@ export const Basket = observer(() => {
     cart.setTotalPrice(data.totalPrice);
     cart.setDeviceCount(data.deviceCount);
   };
+
+  async function handleCheckout() {
+    let cartItems
+    if (!user.isAuth) {
+      cartItems = cart.cartItems.map(item => ({
+        id: item.device.id,
+        quantity: item.quantity
+      }))
+    }
+    const data = await createCheckout(cartItems)
+    window.location.href = data.url
+  }
 
   useEffect(() => {
     if (user.isAuth) {
@@ -169,8 +181,8 @@ export const Basket = observer(() => {
                 <span>{formatPrice(cart.totalPrice)}</span>
               </div>
 
-              <button className="btn btn-success btn-lg checkout-btn">
-                Оформить заказ
+              <button onClick={handleCheckout} className="btn btn-success btn-lg checkout-btn">
+                Proceed to checkout
               </button>
 
               <div className="payment-methods">

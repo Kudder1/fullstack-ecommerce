@@ -7,6 +7,7 @@ import { observer } from 'mobx-react-lite';
 import { getCart } from '../http/cartAPI';
 import { useLocation } from 'react-router-dom';
 import { getLocalCart } from '../utils/helpers';
+import { reverifyEmail } from '../http/userAPI';
 
 const NavBar = observer(() => {
     const { user, cart } = useContext(Context)
@@ -32,11 +33,25 @@ const NavBar = observer(() => {
         user.setIsAuth(false)
     }
 
+    const onVerifyEmailClick = async () => {
+        try {
+            await reverifyEmail()
+            alert('Verification email sent. Please check your inbox')
+        } catch (error) {
+            alert('Verification failed. Please try again later')
+            console.error("Email verification request failed:", error)
+        }
+    }
+
     return (
         <nav className="navbar">
             <div className="navbar-container">
                 <div className="navbar-brand">
                     <NavLink to={SHOP_ROUTE} className="navbar-brand">Brand</NavLink>
+                    {user.isAuth && user.user?.emailVerified && <span> ✔️</span>}
+                    {user.isAuth && !user.user?.emailVerified && (
+                        <button onClick={onVerifyEmailClick}>Verify Email</button>
+                    )}
                 </div>
                 <ul className="navbar-nav">
                     <li className="nav-item">

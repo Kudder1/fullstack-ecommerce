@@ -14,11 +14,32 @@ const User = sequelize.define('user', {
     },
     password: {
         type: DataTypes.STRING,
-        allowNull: false
     },
     role: {
         type: DataTypes.STRING,
         defaultValue: 'USER'
+    },
+    googleId: {
+        type: DataTypes.STRING,
+        unique: true
+    },
+    emailVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    emailVerificationId: {
+        type: DataTypes.STRING,
+        unique: true
+    },
+    emailVerificationIdExpireDate: {
+        type: DataTypes.DATE,
+    },
+    passwordResetId: {
+        type: DataTypes.STRING,
+        unique: true
+    },
+    passwordResetIdExpireDate: {
+        type: DataTypes.DATE,
     }
 })
 
@@ -141,6 +162,105 @@ const TypeBrand = sequelize.define('type_brand', {
     }
 })
 
+// Orders
+
+const Order = sequelize.define('order', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    stripeSessionId: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: false
+    },
+    stripePaymentIntentId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    amount: {
+        type: DataTypes.INTEGER, // stored in cents
+        allowNull: false
+    },
+    currency: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: 'usd'
+    },
+    status: {
+        type: DataTypes.ENUM('pending', 'paid', 'cancelled'),
+        defaultValue: 'pending'
+    },
+    email: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    guestToken: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    shippingName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    shippingCity: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    shippingCountry: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    shippingLine1: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    shippingLine2: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    shippingPostalCode: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+    shippingState: {
+        type: DataTypes.STRING,
+        allowNull: true,
+    },
+})
+
+const OrderItem = sequelize.define('order_item', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
+    name: {
+        type: DataTypes.STRING,
+        allowNull: false
+    },
+    price: {
+        type: DataTypes.INTEGER, // store in cents
+        allowNull: false
+    },
+    quantity: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        defaultValue: 1
+    }
+})
+
+User.hasMany(Order)
+Order.belongsTo(User)
+
+Order.hasMany(OrderItem, { onDelete: 'CASCADE' })
+OrderItem.belongsTo(Order)
+
+Device.hasMany(OrderItem)
+OrderItem.belongsTo(Device)
+
+
 User.hasOne(Basket)
 Basket.belongsTo(User)
 
@@ -177,5 +297,7 @@ module.exports = {
   Type,
   Brand,
   Rating,
-  TypeBrand
+  TypeBrand,
+  Order,
+  OrderItem
 }

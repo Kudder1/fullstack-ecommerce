@@ -28,6 +28,7 @@
     align-items: center;
     margin-right: auto;
     padding: 0.5rem 0;
+    margin-right: 10px;
 }
 
 .navbar-brand a {

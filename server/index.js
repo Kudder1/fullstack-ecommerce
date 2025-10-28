@@ -1,18 +1,27 @@
 require('dotenv').config({ path: process.env.NODE_ENV !== 'development' ? '/etc/app.env' : undefined, quiet: true })
 const express = require('express')
 const sequelize = require('./db')
-const models = require('./models/models')
 const cors = require('cors')
 const fileupload = require('express-fileupload')
 const router = require('./routes/index')
-const errorHandler = require('./middleware/ErrorHandlingMiddleware')
+const errorHandler = require('./middleware/errorHandlingMiddleware')
 const path = require('path')
+const cookieParser = require('cookie-parser')
+const { getUrl } = require('./utils')
+const stripeWebhookController = require('./controllers/stripeWebhookController')
 
 const PORT = process.env.PORT || 5000
 
 const app = express()
-app.use(cors())
+
+app.post('/api/stripe-webhook', 
+  express.raw({ type: 'application/json' }), 
+  stripeWebhookController.checkoutResult
+);
+
+app.use(cors({ origin: getUrl(), credentials: true }))
 app.use(express.json({ limit: '50mb' }))
+app.use(cookieParser())
 app.use(express.static(path.resolve(__dirname, 'static')))
 app.use(fileupload({}))
 
@@ -61,7 +70,7 @@ if (process.env.NODE_ENV !== 'development') {
 const start = async () => {
   try {
     await sequelize.authenticate()
-    await sequelize.sync()
+    await sequelize.sync(process.env.NODE_ENV === 'development' ? { alter: true } : {})
   } catch (e) {
     console.error('Unable to connect to the database:', e)
   }
