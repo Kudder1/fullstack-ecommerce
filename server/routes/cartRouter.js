@@ -4,7 +4,6 @@ const router = new Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const optionalAuthMiddleware = require('../middleware/optionalAuthMiddleware');
 
-router.post('/', authMiddleware, cartController.create);
 router.get('/', authMiddleware, cartController.get);
 
 router.post('/add', authMiddleware, cartController.add);

@@ -6,6 +6,7 @@ const { User } = require('../models/models');
 const { sendEmail } = require('../email');
 const { OAuth2Client } = require("google-auth-library");
 const { getUrl } = require('../utils');
+const { runAllServices } = require('../services');
 
 const generateJwt = (id, email, role, emailVerified) => {
     return jwt.sign(
@@ -29,7 +30,7 @@ const client = new OAuth2Client(
 
 class UserController {
     async registration(req, res, next) {
-        const { email, password, role } = req.body
+        const { email, password, role, questBasket } = req.body
         if (!email || !password) {
             return next(ApiError.badRequest('Email or password are incorrect'))
         }
@@ -45,6 +46,9 @@ class UserController {
         const token = generateJwt(user.id, user.email, user.role, user.emailVerified)
 
         await sendEmail(user.email, verificationId, 'verifyEmail')
+
+        await runAllServices(questBasket, req.cookies.guestToken, user)
+
         return res.json({ token })
     }
     async verifyEmail(req, res, next) {
@@ -73,7 +77,7 @@ class UserController {
         return res.json({ message: 'Email verification email has been sent' })
     }
     async login(req, res, next) {
-        const { email, password } = req.body
+        const { email, password, questBasket } = req.body
         const user = await User.findOne({ where: { email } })
         if (!user) {
             return next(ApiError.badRequest('Invalid email or password'))
@@ -85,12 +89,15 @@ class UserController {
         if (!isMatch) {
             return next(ApiError.badRequest('Invalid email or password'))
         }
+
+        await runAllServices(questBasket, req.cookies.guestToken, user)
+
         const token = generateJwt(user.id, user.email, user.role, user.emailVerified)
         return res.json({ token })
     }
 
     async loginWithGoogle(req, res, next) {
-        const { code } = req.body
+        const { code, questBasket } = req.body
         try {
             const { tokens } = await client.getToken(code)
             // tokens = { access_token, id_token, refresh_token, ... }
@@ -108,6 +115,9 @@ class UserController {
             await user.save()
 
             const token = generateJwt(user.id, user.email, user.role, user.emailVerified)
+
+            await runAllServices(questBasket, req.cookies.guestToken, user)
+
             return res.json({ token })
         } catch (error) {
             console.error(error)

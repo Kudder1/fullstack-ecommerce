@@ -1,16 +1,14 @@
 import { getLocalCart } from "../utils/helpers";
-import { createCart } from "./cartAPI";
 import { fetchGetAuth, fetchPostPublic } from "./fetch";
 import { jwtDecode } from "jwt-decode";
 
 const processResponse = async (response) => {
   localStorage.setItem('token', response.token);
-  await createCart(getLocalCart())
   return jwtDecode(response.token);
 }
 
 export const registration = async (email, password) => {
-  const response = await fetchPostPublic(`/user/registration`, { email, password });
+  const response = await fetchPostPublic(`/user/registration`, { email, password, questBasket: getLocalCart() });
   return processResponse(response)
 }
 
@@ -39,12 +37,12 @@ export const newPassword = async (password1, password2, token) => {
 }
 
 export const login = async (email, password) => {
-  const response = await fetchPostPublic(`/user/login`, { email, password });
+  const response = await fetchPostPublic(`/user/login`, { email, password, questBasket: getLocalCart() });
   return processResponse(response)
 }
 
 export const loginGoogle = async (code) => {
-  const response = await fetchPostPublic(`/user/login-google`, { code });
+  const response = await fetchPostPublic(`/user/login-google`, { code, questBasket: getLocalCart() });
   return processResponse(response)
 }
 

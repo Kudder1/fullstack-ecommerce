@@ -23,13 +23,10 @@ export const Basket = observer(() => {
   };
 
   async function handleCheckout() {
-    let cartItems
-    if (!user.isAuth) {
-      cartItems = cart.cartItems.map(item => ({
-        id: item.device.id,
-        quantity: item.quantity
-      }))
-    }
+    const cartItems = cart.cartItems.map(item => ({
+      id: item.device.id,
+      quantity: item.quantity
+    }))
     const data = await createCheckout(cartItems)
     window.location.href = data.url
   }
