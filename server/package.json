@@ -4,7 +4,14 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development nodemon index.js"
+    "dev": "cross-env NODE_ENV=development nodemon index.js",
+    "migrate": "sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo",
+    "migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    "migrate:status": "sequelize-cli db:migrate:status",
+    "migrate:init": "node scripts/init-migrations.js",
+    "seed": "sequelize-cli db:seed:all",
+    "seed:undo": "sequelize-cli db:seed:undo:all"
   },
   "author": "",
   "license": "ISC",
@@ -26,6 +33,7 @@
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "sequelize-cli": "^6.6.3"
   }
 }
