@@ -71,8 +71,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /var/www/myapp/server
-            # Remove all files/folders except protected ones
-            find . -maxdepth 1 ! -name '.' ! -name '..' ! -name 'node_modules' ! -name '.env' ! -name 'public' ! -name '.migrations-initialized' ! -name 'static' -exec rm -rf {} + 2>/dev/null || true
+            # Remove all files/folders except protected ones (including subdirectories)
+            shopt -s extglob
+            rm -rf !(node_modules|.env|public|.migrations-initialized|static) 2>/dev/null || true
 
       # Copy backend to EC2
       - name: Copy backend to EC2
