@@ -173,14 +173,23 @@ const Order = sequelize.define('order', {
     stripeSessionId: {
         type: DataTypes.STRING,
         unique: true,
-        allowNull: false
+        allowNull: true
     },
     stripePaymentIntentId: {
         type: DataTypes.STRING,
         allowNull: true
     },
+    paypalOrderId: {
+        type: DataTypes.STRING,
+        unique: true,
+        allowNull: true
+    },
+    paypalCaptureId: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
     amount: {
-        type: DataTypes.INTEGER, // stored in cents
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     currency: {
@@ -241,7 +250,7 @@ const OrderItem = sequelize.define('order_item', {
         allowNull: false
     },
     price: {
-        type: DataTypes.INTEGER, // store in cents
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     quantity: {

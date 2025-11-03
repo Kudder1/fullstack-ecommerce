@@ -1,11 +1,6 @@
 const ApiError = require("../error/ApiError")
-const { Basket, BasketDevice, Device, Brand, Order, OrderItem } = require("../models/models")
-const Stripe = require("stripe")
-const { getUrl } = require("../utils")
-const sequelize = require("../db")
+const { Basket, BasketDevice, Device, Brand } = require("../models/models")
 const crypto = require("crypto")
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 function getBasketTotals(basket) {
     const deviceCount = basket.length
@@ -78,93 +73,6 @@ class CartController {
 
         const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device }] })
         return res.json(getBasketTotals(fullBasket))
-    }
-    async checkout(req, res, next) {
-        const { id: userId } = req.user || {}
-        const { items: itemsWithIdAndQuantity } = req.body
-        try {
-            const devices = await Device.findAll({
-                where: {
-                    id: itemsWithIdAndQuantity.map(item => item.id),
-                },
-                raw: true
-            })
-            const quantityMap = new Map(
-                itemsWithIdAndQuantity.map(item => [item.id, item.quantity])
-            )
-            const lineItems = devices.map(device => ({
-                price_data: {
-                    currency: 'usd',
-                    product_data: { name: device.name },
-                    unit_amount: device.price * 100,
-                },
-                quantity: quantityMap.get(device.id),
-            }))
-            const session = await stripe.checkout.sessions.create({
-                mode: 'payment',
-                payment_method_types: ['card'],
-                line_items: lineItems,
-                shipping_address_collection: {
-                    allowed_countries: ['UA'],
-                },
-                success_url: `${getUrl()}/success?session_id={CHECKOUT_SESSION_ID}`,
-                cancel_url: `${getUrl()}/`,
-                expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes from now
-            })
-
-            const order = await Order.create({
-                stripeSessionId: session.id,
-                amount: session.amount_total,
-                currency: session.currency,
-                userId: userId || null,
-                guestToken: userId ? null : req.cookies.guestToken,
-            })
-
-            const orderItemsData = devices.map(device => ({
-                orderId: order.id,
-                deviceId: device.id,
-                name: device.name,
-                price: device.price * 100,
-                quantity: quantityMap.get(device.id)
-            }))
-
-            const t = await sequelize.transaction()
-            try {
-                await OrderItem.bulkCreate(orderItemsData, {
-                    transaction: t,
-                    ignoreDuplicates: true,
-                    validate: true
-                })
-                await t.commit()
-            } catch (err) {
-                await t.rollback()
-                console.log('Transaction rolled back due to error:', err)
-                return next(ApiError.internal('Checkout error: ' + err.message))
-            }
-            return res.json({ url: session.url })
-        } catch (error) {
-            return next(ApiError.internal('Checkout error: ' + error.message))
-        }
-    }
-    async verifyCheckoutSession(req, res, next) {
-        const { sessionId } = req.query
-        if (!sessionId) {
-            return next(ApiError.badRequest('Missing sessionId'))
-        }
-        try {
-            const session = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["line_items"] })
-            if (session.payment_status !== "paid") {
-                return next(ApiError.badRequest('Payment not completed'))
-            }
-            const items = session.line_items.data.map((li) => ({
-                name: li.description,
-                quantity: li.quantity,
-                amount: li.price.unit_amount,
-            }))
-            return res.json({ items })
-        } catch (error) {
-            return next(ApiError.badRequest('Checkout session verification error: ' + error.message))
-        }
     }
     async generateGuestToken(req, res) {
         const guestToken = req.cookies.guestToken

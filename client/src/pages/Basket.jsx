@@ -1,7 +1,7 @@
 import { useEffect, useContext } from 'react';
 import './Basket.css';
 import { Context } from '../main';
-import { createCheckout, getCart, updateCart } from '../http/cartAPI';
+import { createStripeCheckout, createPaypalCheckout, getCart, updateCart } from '../http/cartAPI';
 import { observer } from 'mobx-react-lite';
 import { getLocalCart, updateLocalCart } from '../utils/helpers';
 
@@ -22,12 +22,12 @@ export const Basket = observer(() => {
     cart.setDeviceCount(data.deviceCount);
   };
 
-  async function handleCheckout() {
+  async function handleCheckout(type) {
     const cartItems = cart.cartItems.map(item => ({
       id: item.device.id,
       quantity: item.quantity
     }))
-    const data = await createCheckout(cartItems)
+    const data = type === 'stripe' ? await createStripeCheckout(cartItems) : await createPaypalCheckout(cartItems)
     window.location.href = data.url
   }
 
@@ -178,8 +178,11 @@ export const Basket = observer(() => {
                 <span>{formatPrice(cart.totalPrice)}</span>
               </div>
 
-              <button onClick={handleCheckout} className="btn btn-success btn-lg checkout-btn">
-                Proceed to checkout
+              <button onClick={() => handleCheckout('stripe')} className="btn btn-success btn-lg checkout-btn">
+                Pay with Stripe
+              </button>
+              <button onClick={() => handleCheckout('paypal')} className="btn btn-success btn-lg checkout-btn mt-0">
+                Pay with Paypal
               </button>
 
               <div className="payment-methods">

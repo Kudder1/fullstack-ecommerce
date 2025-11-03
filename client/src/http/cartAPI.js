@@ -23,12 +23,29 @@ export const generateGuestToken = async () => {
   return res
 }
 
-export const createCheckout = async (items) => {
-  const res = await fetchPostAuth('/cart/checkout', { items });
+export const createStripeCheckout = async (items) => {
+  const res = await fetchPostAuth('/checkout/stripe', { items });
   return res
 }
 
-export const verifyCheckoutSession = async (sessionId) => {
-  const res = await fetchGetAuth(`/cart/checkout/verify?sessionId=${sessionId}`);
+export const verifyStripeCheckoutSession = async (sessionId) => {
+  const res = await fetchGetAuth(`/checkout/stripe/verify?sessionId=${sessionId}`);
+  return res
+}
+
+export const createPaypalCheckout = async (items) => {
+  const res = await fetchPostAuth('/checkout/paypal', { items });
+  return res
+}
+
+export const getPaypalOrder = async (orderId) => {
+  const res = await fetchGetAuth(`/checkout/paypal/getOrder?orderId=${orderId}`);
+  return res
+}
+
+export const cancelOrder = async (payload) => {
+  const { stripeId, paypalId } = payload
+  const data = { ...(paypalId ? { paypalId } : { stripeId }) }
+  const res = await fetchPostAuth('/checkout/cancel', data);
   return res
 }

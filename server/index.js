@@ -8,7 +8,7 @@ const errorHandler = require('./middleware/errorHandlingMiddleware')
 const path = require('path')
 const cookieParser = require('cookie-parser')
 const { getUrl } = require('./utils')
-const stripeWebhookController = require('./controllers/stripeWebhookController')
+const paymentWebhookController = require('./controllers/paymentWebhookController')
 
 const PORT = process.env.PORT || 5000
 
@@ -16,8 +16,8 @@ const app = express()
 
 app.post('/api/stripe-webhook', 
   express.raw({ type: 'application/json' }), 
-  stripeWebhookController.checkoutResult
-);
+  paymentWebhookController.stripeCheckoutResult
+)
 
 app.use(cors({ origin: getUrl(), credentials: true }))
 app.use(express.json({ limit: '50mb' }))
@@ -25,10 +25,13 @@ app.use(cookieParser())
 app.use(express.static(path.resolve(__dirname, 'static')))
 app.use(fileupload({}))
 
-// API routes
+
+app.post('/api/paypal-webhook', 
+  express.raw({ type: 'application/json' }), 
+  paymentWebhookController.paypalCheckoutResult
+)
 app.use('/api', router)
 
-// Error handler for API routes ONLY
 app.use('/api', errorHandler)
 
 // --- Serve React frontend only in production ---
