@@ -1,5 +1,5 @@
 require('dotenv').config({ path: process.env.NODE_ENV !== 'development' ? '/etc/app.env' : undefined, quiet: true });
-const sequelize = require('./db');
+const sequelize = require('../db');
 
 /**
  * This script marks all existing migrations as completed WITHOUT running them.

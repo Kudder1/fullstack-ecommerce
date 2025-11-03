@@ -19,6 +19,8 @@ jobs:
           cd client
           echo "VITE_API_URL=https://${{ secrets.EC2_DOMAIN }}/api" > .env
           echo "VITE_SERVER_URL=https://${{ secrets.EC2_DOMAIN }}/" >> .env
+          echo "VITE_GOOGLE_CLIENT_ID=https://${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+          echo "VITE_STRIPE_PUBLIC_KEY=https://${{ secrets.STRIPE_PUBLIC_KEY }}" >> .env
 
       # Build React locally in GitHub Actions
       - name: Build React
@@ -99,11 +101,15 @@ jobs:
             # Check if migrations are already initialized
             if [ ! -f .migrations-initialized ]; then
               echo "Initializing migration state for existing database..."
-              echo "yes" | npm run migrate:init
-              touch .migrations-initialized
-              echo "Migration state initialized successfully"
+              if echo "yes" | npm run migrate:init; then
+                touch .migrations-initialized
+                echo "✅ Migration state initialized successfully"
+              else
+                echo "❌ Migration initialization failed"
+                exit 1
+              fi
             else
-              echo "Migrations already initialized, skipping..."
+              echo "✅ Migrations already initialized, skipping..."
             fi
 
       # Restart Node.js application
