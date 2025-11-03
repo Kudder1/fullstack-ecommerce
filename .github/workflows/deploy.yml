@@ -62,34 +62,19 @@ jobs:
           strip_components: 2
           overwrite: true
 
-      # Clean server directory (except node_modules, .env, public, and marker files)
-      - name: Clean server directory
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /var/www/myapp/server
-            # Remove all files/folders except protected ones (including subdirectories)
-            shopt -s extglob
-            rm -rf !(node_modules|.env|public|.migrations-initialized|static) 2>/dev/null || true
-
-      # Copy backend to EC2
-      - name: Copy backend to EC2
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "server/*"
-          target: "/var/www/myapp"
-          strip_components: 0
-          overwrite: true
-          exclude: |
-            node_modules
-            .env
-            public
+      # Sync backend to EC2 (handles renames, deletions, and updates)
+      - name: Sync backend to EC2
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > deploy_key.pem
+          chmod 600 deploy_key.pem
+          rsync -avz --delete \
+            --exclude 'node_modules' \
+            --exclude '.env' \
+            --exclude 'public' \
+            --exclude '.migrations-initialized' \
+            -e "ssh -i deploy_key.pem -o StrictHostKeyChecking=no" \
+            server/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/myapp/server/
+          rm -f deploy_key.pem
 
       # Install backend dependencies
       - name: Install dependencies
