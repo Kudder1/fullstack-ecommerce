@@ -4,25 +4,20 @@ import NavBar from './components/NavBar'
 import { observer } from 'mobx-react-lite'
 import { useContext, useEffect, useState } from 'react'
 import { Context } from './main'
-import { check } from './http/userAPI'
+import { refresh } from './http/userAPI'
 import { CenteredSpinner } from './components/Spinner'
 
 const App = observer(() => {
   const { user } = useContext(Context)
   const [loading, setLoading] = useState(true)
-  const token = localStorage.getItem('token')
 
   useEffect(() => {
-    if (token) {
-      check().then(data => {
-        user.setUser(data)
-        user.setIsAuth(true)
-      }).finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
+    refresh().then(data => {
+      user.setUser(data)
+      user.setIsAuth(true)
+    }).finally(() => setLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user])
+  }, [])
 
   if (loading) {
     return (

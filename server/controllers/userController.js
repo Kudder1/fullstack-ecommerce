@@ -8,12 +8,25 @@ const { OAuth2Client } = require("google-auth-library");
 const { getUrl } = require('../utils');
 const { runAllServices } = require('../services');
 
-const generateJwt = (id, email, role, emailVerified) => {
+const generateAccessToken = (id, email, role, emailVerified) => {
     return jwt.sign(
         { id, email, role, emailVerified },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
+        process.env.JWT_ACCESS_SECRET,
+        { expiresIn: '15m' }
     )
+}
+const generateRefreshToken = (id) => {
+    return jwt.sign(
+        { id },
+        process.env.JWT_REFRESH_SECRET,
+        { expiresIn: '7d' }
+    )
+}
+const refreshTokenCookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV !== 'development',
+    sameSite: 'strict', // lax
+    maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
 }
 
 const generateVerificationId = () => {
@@ -43,13 +56,14 @@ class UserController {
         const { verificationId, verificationIdExpireDate } = generateVerificationId()
 
         const user = await User.create({ email, password: hashPassword, role, emailVerificationId: verificationId, emailVerificationIdExpireDate: verificationIdExpireDate })
-        const token = generateJwt(user.id, user.email, user.role, user.emailVerified)
+        const accessToken = generateAccessToken(user.id, user.email, user.role, user.emailVerified)
+        const refreshToken = generateRefreshToken(user.id)
+        res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
 
         await sendEmail(user.email, verificationId, 'verifyEmail')
-
         await runAllServices(questBasket, req.cookies.guestToken, user)
 
-        return res.json({ token })
+        return res.json({ accessToken })
     }
     async verifyEmail(req, res, next) {
         const { token } = req.query
@@ -92,15 +106,16 @@ class UserController {
 
         await runAllServices(questBasket, req.cookies.guestToken, user)
 
-        const token = generateJwt(user.id, user.email, user.role, user.emailVerified)
-        return res.json({ token })
-    }
+        const accessToken = generateAccessToken(user.id, user.email, user.role, user.emailVerified)
+        const refreshToken = generateRefreshToken(user.id)
+        res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
 
+        return res.json({ accessToken })
+    }
     async loginWithGoogle(req, res, next) {
         const { code, questBasket } = req.body
         try {
             const { tokens } = await client.getToken(code)
-            // tokens = { access_token, id_token, refresh_token, ... }
             const ticket = await client.verifyIdToken({
                 idToken: tokens.id_token,
                 audience: process.env.GOOGLE_CLIENT_ID,
@@ -114,11 +129,13 @@ class UserController {
             user.googleId = sub
             await user.save()
 
-            const token = generateJwt(user.id, user.email, user.role, user.emailVerified)
-
             await runAllServices(questBasket, req.cookies.guestToken, user)
 
-            return res.json({ token })
+            const accessToken = generateAccessToken(user.id, user.email, user.role, user.emailVerified)
+            const refreshToken = generateRefreshToken(user.id)
+            res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+
+            return res.json({ accessToken })
         } catch (error) {
             console.error(error)
             next(ApiError.internal('Google authentication failed'))
@@ -156,14 +173,34 @@ class UserController {
         user.passwordResetId = null
         user.passwordResetIdExpireDate = null
         await user.save()
-        const token = generateJwt(user.id, user.email, user.role, user.emailVerified)
-        return res.json({ token, message: 'Password successfully updated' })
+
+        const accessToken = generateAccessToken(user.id, user.email, user.role, user.emailVerified)
+        const refreshToken = generateRefreshToken(user.id)
+        res.cookie('refreshToken', refreshToken, refreshTokenCookieOptions)
+
+        return res.json({ accessToken, message: 'Password successfully updated' })
     }
-    async checkAuth(req, res) {
-        // if user constantly uses his account, his token will be rewritten
-        const token = generateJwt(req.user.id, req.user.email, req.user.role, req.user.emailVerified)
-        // any other data should be fetched from a separate getUser endpoint
-        return res.json({ token })
+    async refreshAccessToken(req, res, next) {
+        const { refreshToken } = req.cookies
+        if (!refreshToken) {
+            return next(ApiError.unauthorized())
+        }
+        let userData
+        try {
+            userData = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
+        } catch {
+            return next(ApiError.unauthorized())
+        }
+        const user = await User.findOne({ where: { id: userData.id } })
+        if (!user) {
+            return next(ApiError.unauthorized())
+        }
+        const accessToken = generateAccessToken(user.id, user.email, user.role, user.emailVerified)
+        return res.json({ accessToken })
+    }
+    async logout(r, res) {
+        res.clearCookie('refreshToken', refreshTokenCookieOptions)
+        return res.json({ message: 'Successfully logged out' })
     }
 }
 

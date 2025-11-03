@@ -1,6 +1,8 @@
+import userStore from '../store/UserStore';
+
 export const API_URL = import.meta.env.VITE_API_URL;
 
-const fetchWrapper = async (url, options = {}, useAuth = true) => {
+const fetchWrapper = async (url, options = {}, useAuth = true, isRetry = false) => {
   const headers = {
     // 'Content-Type': 'application/json',
     ...options.headers
@@ -11,7 +13,7 @@ const fetchWrapper = async (url, options = {}, useAuth = true) => {
   }
 
   if (useAuth) {
-    const token = localStorage.getItem('token');
+    const token = userStore?.accessToken;
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
@@ -26,6 +28,19 @@ const fetchWrapper = async (url, options = {}, useAuth = true) => {
   const response = await fetch(API_URL + url, requestOptions);
   if (!response.ok) {
     const error = await response.json();
+    if (response.status === 401 && !isRetry && !url.endsWith('/user/refresh')) {
+      const refreshResponse = await fetch(API_URL + '/user/refresh', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!refreshResponse.ok) {
+        userStore.logout()
+        throw new Error('Unauthorized');
+      }
+      const { accessToken } = await refreshResponse.json();
+      userStore.setAccessToken(accessToken);
+      return fetchWrapper(url, options, useAuth, true);
+    }
     throw new Error(error.message || 'Ошибка при выполнении запроса');
   }
   return response.json();

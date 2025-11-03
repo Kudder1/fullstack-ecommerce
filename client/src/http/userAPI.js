@@ -1,10 +1,11 @@
 import { getLocalCart } from "../utils/helpers";
-import { fetchGetAuth, fetchPostPublic } from "./fetch";
+import { fetchGetAuth, fetchPostAuth, fetchPostPublic } from "./fetch";
 import { jwtDecode } from "jwt-decode";
+import userStore from '../store/UserStore';
 
 const processResponse = async (response) => {
-  localStorage.setItem('token', response.token);
-  return jwtDecode(response.token);
+  userStore.setAccessToken(response.accessToken);
+  return jwtDecode(response.accessToken);
 }
 
 export const registration = async (email, password) => {
@@ -29,7 +30,7 @@ export const recoverPassword = async (email) => {
 
 export const newPassword = async (password1, password2, token) => {
   const response = await fetchPostPublic(`/user/new-password?token=${token}`, { password1, password2 });
-  localStorage.setItem('token', response.token);
+  userStore.setAccessToken(response.accessToken)
   return {
     user: jwtDecode(response.token),
     message: response.message
@@ -46,13 +47,12 @@ export const loginGoogle = async (code) => {
   return processResponse(response)
 }
 
+export const refresh = async () => {
+  const response = await fetchPostAuth('/user/refresh');
+  return processResponse(response)
+}
 
-export const check = async () => {
-  try {
-    const response = await fetchGetAuth(`/user/auth`);
-    localStorage.setItem('token', response.token);
-    return jwtDecode(response.token);
-  } catch {
-    localStorage.removeItem('token');
-  }
+export const logout = async () => {
+  await fetchPostAuth('/user/logout');
+  userStore.logout()
 }

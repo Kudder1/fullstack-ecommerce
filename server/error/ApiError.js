@@ -7,6 +7,9 @@ class ApiError extends Error {
     static badRequest(message) {
         return new ApiError(400, message);
     }
+    static unauthorized(message = 'Not authorized') {
+        return new ApiError(401, message);
+    }
     static internal(message) {
         return new ApiError(500, message);
     }

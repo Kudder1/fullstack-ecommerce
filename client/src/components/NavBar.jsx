@@ -7,7 +7,7 @@ import { observer } from 'mobx-react-lite';
 import { getCart } from '../http/cartAPI';
 import { useLocation } from 'react-router-dom';
 import { getLocalCart } from '../utils/helpers';
-import { reverifyEmail } from '../http/userAPI';
+import { logout, reverifyEmail } from '../http/userAPI';
 
 const NavBar = observer(() => {
     const { user, cart } = useContext(Context)
@@ -28,9 +28,7 @@ const NavBar = observer(() => {
     }, [pathname]);
     
     const logOut = () => {
-        localStorage.removeItem('token')
-        user.setUser({})
-        user.setIsAuth(false)
+        logout();
     }
 
     const onVerifyEmailClick = async () => {
