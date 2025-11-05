@@ -31,9 +31,6 @@ class CartController {
         const { id: userId } = req.user
         const { deviceId, quantity } = req.body
 
-        console.log(`[Cart Add] RAW BODY:`, JSON.stringify(req.body))
-        console.log(`[Cart Add] userId: ${userId}, deviceId: ${deviceId}, quantity: ${quantity}, typeof: ${typeof quantity}`)
-
         let device = await Device.findOne({ where: { id: deviceId } })
         if (!device) {
             return next(ApiError.notFound('Device not found'))
@@ -44,15 +41,15 @@ class CartController {
             basket = await Basket.create({ userId })
         }
 
-        let basketDevice = await BasketDevice.findOne({ where: { basketId: basket.id, deviceId } })
-        if (!basketDevice) {
-            console.log(`[Cart Add] Creating new basketDevice with quantity: ${quantity}`)
-            basketDevice = await BasketDevice.create({ basketId: basket.id, deviceId, quantity })
-        } else {
-            console.log(`[Cart Add] Existing quantity: ${basketDevice.quantity}, adding: ${quantity}`)
+        // Use findOrCreate to avoid race conditions
+        const [basketDevice, created] = await BasketDevice.findOrCreate({
+            where: { basketId: basket.id, deviceId },
+            defaults: { basketId: basket.id, deviceId, quantity }
+        })
+
+        if (!created) {
             basketDevice.quantity += quantity
             await basketDevice.save()
-            console.log(`[Cart Add] New quantity: ${basketDevice.quantity}`)
         }
         
         const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device }] })
