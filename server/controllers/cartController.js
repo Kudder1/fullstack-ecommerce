@@ -31,39 +31,60 @@ class CartController {
         const { id: userId } = req.user
         const { deviceId, quantity } = req.body
 
-        const [basket] = await Basket.findOrCreate({
-            where: { userId },
-            defaults: { userId }
-        })
+        try {
+            const [basket] = await Basket.findOrCreate({
+                where: { userId },
+                defaults: { userId }
+            })
 
-        const [basketDevice, created] = await BasketDevice.findOrCreate({
-            where: { basketId: basket.id, deviceId },
-            defaults: { basketId: basket.id, deviceId, quantity }
-        })
+            await BasketDevice.upsert({
+                basketId: basket.id,
+                deviceId,
+                quantity: sequelize.literal(`COALESCE("quantity", 0) + ${quantity}`)
+            })
+            // alternative: simple increment (no COALESCE needed if column is NOT NULL)
+            // quantity column has a default or is never NULL.
 
-        if (!created) {
-            await basketDevice.increment('quantity', { by: quantity })
+            const fullBasket = await BasketDevice.findAll({
+                where: { basketId: basket.id },
+                include: [{ model: Device, include: [{ model: Brand }] }]
+            })
+
+            return res.json(getBasketTotals(fullBasket))
+        } catch (e) {
+            console.error('Add to cart error:', e)
+            return res.status(500).json({ error: 'Failed to add item' })
         }
-        
-        const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device, include: [{ model: Brand }] }] })
-        return res.json(getBasketTotals(fullBasket))
     }
     async update(req, res) {
         const { id: userId } = req.user
         const { deviceId, quantity } = req.body
 
-        const basket = await Basket.findOne({ where: { userId } })
-        const basketDevice = await BasketDevice.findOne({ where: { basketId: basket.id, deviceId } })
+        try {
+            const basket = await Basket.findOne({ where: { userId } })
+            
+            if (quantity <= 0) {
+                await BasketDevice.destroy({
+                    where: { basketId: basket.id, deviceId }
+                })
+            } else {
+                await BasketDevice.upsert({
+                    basketId: basket.id,
+                    deviceId,
+                    quantity
+                })
+            }
 
-        if (quantity <= 0) {
-            await basketDevice.destroy()
-        } else {
-            basketDevice.quantity = quantity
-            await basketDevice.save()
+            const fullBasket = await BasketDevice.findAll({
+                where: { basketId: basket.id },
+                include: [{ model: Device, include: [{ model: Brand }] }]
+            })
+
+            return res.json(getBasketTotals(fullBasket))
+        } catch (e) {
+            console.error('Update cart error:', e)
+            return res.status(500).json({ error: 'Failed to update item' })
         }
-
-        const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device, include: [{ model: Brand }] }] })
-        return res.json(getBasketTotals(fullBasket))
     }
     async generateGuestToken(req, res) {
         const guestToken = req.cookies.guestToken
