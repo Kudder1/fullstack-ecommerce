@@ -42,8 +42,7 @@ class CartController {
         })
 
         if (!created) {
-            basketDevice.quantity += quantity
-            await basketDevice.save()
+            await basketDevice.increment('quantity', { by: quantity })
         }
         
         const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device }] })
