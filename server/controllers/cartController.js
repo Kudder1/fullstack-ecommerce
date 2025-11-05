@@ -45,17 +45,12 @@ class CartController {
             await basketDevice.increment('quantity', { by: quantity })
         }
         
-        const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device }] })
+        const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device, include: [{ model: Brand }] }] })
         return res.json(getBasketTotals(fullBasket))
     }
     async update(req, res) {
         const { id: userId } = req.user
         const { deviceId, quantity } = req.body
-
-        let device = await Device.findOne({ where: { id: deviceId } })
-        if (!device) {
-            return next(ApiError.notFound('Device not found'))
-        }
 
         const basket = await Basket.findOne({ where: { userId } })
         const basketDevice = await BasketDevice.findOne({ where: { basketId: basket.id, deviceId } })
@@ -67,7 +62,7 @@ class CartController {
             await basketDevice.save()
         }
 
-        const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device }] })
+        const fullBasket = await BasketDevice.findAll({ where: { basketId: basket.id }, include: [{ model: Device, include: [{ model: Brand }] }] })
         return res.json(getBasketTotals(fullBasket))
     }
     async generateGuestToken(req, res) {

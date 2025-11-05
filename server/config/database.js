@@ -1,4 +1,5 @@
 require('dotenv').config({ path: process.env.NODE_ENV !== 'development' ? '/etc/app.env' : undefined, quiet: true });
+const poolConfig = require('./poolConfig');
 
 module.exports = {
   development: {
@@ -8,7 +9,8 @@ module.exports = {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'postgres',
-    logging: false
+    logging: false,
+    pool: poolConfig
   },
   production: {
     username: process.env.DB_USER,
@@ -17,6 +19,7 @@ module.exports = {
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     dialect: 'postgres',
-    logging: false
+    logging: false,
+    pool: poolConfig
   }
 };
