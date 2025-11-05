@@ -8,6 +8,7 @@ const DevicePage = () => {
   const { cart, user } = useContext(Context)
   const { id } = useParams()
   const [device, setDevice] = useState({info: []})
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
 
   const imgUrl = device?.img?.startsWith('http') ? device.img : import.meta.env.VITE_SERVER_URL + device.img;
 
@@ -22,8 +23,14 @@ const DevicePage = () => {
   }
 
   const onAddToCartClick = async() => {
-    const totalItems = await addToCartWrapper(device, user.isAuth)
-    cart.setTotalItems(totalItems)
+    if (isAddingToCart) return
+    setIsAddingToCart(true)
+    try {
+      const totalItems = await addToCartWrapper(device, user.isAuth)
+      cart.setTotalItems(totalItems)
+    } finally {
+      setIsAddingToCart(false)
+    }
   }
 
   return (
@@ -54,7 +61,9 @@ const DevicePage = () => {
         <div className="col-md-4">
           <div className="card" style={{ width: 300, fontSize: 29, padding: 25 }}>
             <h3 className="mt-3">from: {device.price} USD</h3>
-            <button onClick={onAddToCartClick}>Add to cart</button>
+            <button onClick={onAddToCartClick} disabled={isAddingToCart}>
+              {isAddingToCart ? 'Adding...' : 'Add to cart'}
+            </button>
           </div>
         </div>
       </div>
