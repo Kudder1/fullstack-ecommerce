@@ -110,6 +110,18 @@ jobs:
               echo "✅ Migrations already initialized, skipping..."
             fi
 
+      # Run pending migrations
+      - name: Run database migrations
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /var/www/myapp/server
+            npm run migrate
+            echo "✅ Migrations completed"
+
       # Restart Node.js application
       - name: Restart backend
         uses: appleboy/ssh-action@v1.2.0
