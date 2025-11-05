@@ -27,21 +27,15 @@ class CartController {
         const basketDevices = basket ? basket.basket_devices : []
         return res.json(getBasketTotals(basketDevices))
     }
-    async add(req, res, next) {
+    async add(req, res) {
         const { id: userId } = req.user
         const { deviceId, quantity } = req.body
 
-        let device = await Device.findOne({ where: { id: deviceId } })
-        if (!device) {
-            return next(ApiError.notFound('Device not found'))
-        }
+        const [basket] = await Basket.findOrCreate({
+            where: { userId },
+            defaults: { userId }
+        })
 
-        let basket = await Basket.findOne({ where: { userId } })
-        if (!basket) {
-            basket = await Basket.create({ userId })
-        }
-
-        // Use findOrCreate to avoid race conditions
         const [basketDevice, created] = await BasketDevice.findOrCreate({
             where: { basketId: basket.id, deviceId },
             defaults: { basketId: basket.id, deviceId, quantity }
