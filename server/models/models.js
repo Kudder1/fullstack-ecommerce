@@ -49,6 +49,12 @@ const Basket = sequelize.define('basket', {
         primaryKey: true,
         autoIncrement: true
     },
+}, {
+    indexes: [
+        {
+            fields: ['userId']
+        }
+    ]
 })
 
 const BasketDevice = sequelize.define('basket_device', {
@@ -62,6 +68,19 @@ const BasketDevice = sequelize.define('basket_device', {
         allowNull: false,
         defaultValue: 1
     }
+}, {
+    indexes: [
+        {
+            fields: ['basketId']
+        },
+        {
+            fields: ['deviceId']
+        },
+        {
+            unique: true,
+            fields: ['basketId', 'deviceId']
+        }
+    ]
 })
 
 const Device = sequelize.define('device', {

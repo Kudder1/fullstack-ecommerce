@@ -1,6 +1,7 @@
 const ApiError = require("../error/ApiError")
 const { Basket, BasketDevice, Device, Brand } = require("../models/models")
 const crypto = require("crypto")
+const sequelize = require("../db")
 
 function getBasketTotals(basket) {
     const deviceCount = basket.length
@@ -37,13 +38,15 @@ class CartController {
                 defaults: { userId }
             })
 
-            await BasketDevice.upsert({
-                basketId: basket.id,
-                deviceId,
-                quantity: sequelize.literal(`COALESCE("quantity", 0) + ${quantity}`)
-            })
-            // alternative: simple increment (no COALESCE needed if column is NOT NULL)
-            // quantity column has a default or is never NULL.
+            await sequelize.query(
+                `INSERT INTO basket_devices ("basketId", "deviceId", quantity, "createdAt", "updatedAt") 
+                 VALUES (:basketId, :deviceId, :quantity, NOW(), NOW())
+                 ON CONFLICT ("basketId", "deviceId") 
+                 DO UPDATE SET quantity = basket_devices.quantity + :quantity, "updatedAt" = NOW()`,
+                {
+                    replacements: { basketId: basket.id, deviceId, quantity }
+                }
+            )
 
             const fullBasket = await BasketDevice.findAll({
                 where: { basketId: basket.id },
@@ -68,11 +71,15 @@ class CartController {
                     where: { basketId: basket.id, deviceId }
                 })
             } else {
-                await BasketDevice.upsert({
-                    basketId: basket.id,
-                    deviceId,
-                    quantity
-                })
+                await sequelize.query(
+                    `INSERT INTO basket_devices ("basketId", "deviceId", quantity, "createdAt", "updatedAt") 
+                     VALUES (:basketId, :deviceId, :quantity, NOW(), NOW())
+                     ON CONFLICT ("basketId", "deviceId") 
+                     DO UPDATE SET quantity = :quantity, "updatedAt" = NOW()`,
+                    {
+                        replacements: { basketId: basket.id, deviceId, quantity }
+                    }
+                )
             }
 
             const fullBasket = await BasketDevice.findAll({
