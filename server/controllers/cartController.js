@@ -33,11 +33,15 @@ class CartController {
         const { deviceId, quantity } = req.body
 
         try {
+            const startTime = Date.now()
+            
             const [basket] = await Basket.findOrCreate({
                 where: { userId },
                 defaults: { userId }
             })
+            console.log(`Basket findOrCreate: ${Date.now() - startTime}ms`)
 
+            const upsertStart = Date.now()
             await sequelize.query(
                 `INSERT INTO basket_devices ("basketId", "deviceId", quantity, "createdAt", "updatedAt") 
                  VALUES (:basketId, :deviceId, :quantity, NOW(), NOW())
@@ -47,11 +51,15 @@ class CartController {
                     replacements: { basketId: basket.id, deviceId, quantity }
                 }
             )
+            console.log(`Upsert: ${Date.now() - upsertStart}ms`)
 
+            const fetchStart = Date.now()
             const fullBasket = await BasketDevice.findAll({
                 where: { basketId: basket.id },
                 include: [{ model: Device, include: [{ model: Brand }] }]
             })
+            console.log(`Fetch full basket: ${Date.now() - fetchStart}ms`)
+            console.log(`Total add to cart time: ${Date.now() - startTime}ms`)
 
             return res.json(getBasketTotals(fullBasket))
         } catch (e) {
