@@ -1,6 +1,6 @@
 module.exports = {
-  max: 20,           // Max connections
-  min: 2,            // Min connections always open
-  acquire: 30000,    // How long to wait for a connection
+  max: 25,           // Max connections
+  min: 3,            // Min connections always open
+  acquire: 10000,    // 10s timeout to get a connection (fail fast)
   idle: 10000        // How long before closing idle connection
 };
