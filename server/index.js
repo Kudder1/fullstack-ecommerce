@@ -1,4 +1,4 @@
-require('dotenv').config({ path: process.env.NODE_ENV !== 'development' ? '/etc/app.env' : undefined, quiet: true })
+require('dotenv').config({ path: '../.env', quiet: true })
 const express = require('express')
 const sequelize = require('./db')
 const cors = require('cors')

@@ -24,5 +24,11 @@ dist-ssr
 *.sw?
 
 *.env
+!.env.example
 .git
 *.pem
+
+# Docker volumes and certificates
+certbot/
+postgres_data/
+server_static/

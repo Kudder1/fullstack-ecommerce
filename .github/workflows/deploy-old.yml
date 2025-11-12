@@ -1,4 +1,4 @@
-name: Deploy to EC2 with Docker
+name: Deploy to EC2
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Create .env file for production build (same as original deploy.yml)
+      # Create .env file for production build
       - name: Create production .env
         run: |
           cd client
@@ -22,7 +22,7 @@ jobs:
           echo "VITE_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
           echo "VITE_STRIPE_PUBLIC_KEY=${{ secrets.STRIPE_PUBLIC_KEY }}" >> .env
 
-      # Build React locally in GitHub Actions (same as original deploy.yml)
+      # Build React locally in GitHub Actions
       - name: Build React
         run: |
           cd client
@@ -40,8 +40,17 @@ jobs:
             # Create directory if it doesn't exist
             sudo mkdir -p /var/www/myapp
             sudo chown -R ubuntu:ubuntu /var/www/myapp
+            
+            # One-time migration: move old app if it exists
+            if [ -d ~/app ] && [ ! -f /var/www/myapp/.migrated ]; then
+              echo "Migrating from ~/app to /var/www/myapp..."
+              pm2 stop myapp || true
+              pm2 delete myapp || true
+              cp -r ~/app/* /var/www/myapp/ 2>/dev/null || true
+              touch /var/www/myapp/.migrated
+            fi
 
-      # Copy pre-built frontend to EC2
+      # Copy ONLY dist contents to server/public
       - name: Copy frontend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -49,11 +58,11 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "client/dist/*"
-          target: "/var/www/myapp/client/dist"
+          target: "/var/www/myapp/server/public"
           strip_components: 2
           overwrite: true
 
-      # Sync backend to EC2
+      # Sync backend to EC2 (handles renames, deletions, and updates)
       - name: Sync backend to EC2
         run: |
           echo "${{ secrets.EC2_SSH_KEY }}" > deploy_key.pem
@@ -67,61 +76,63 @@ jobs:
             server/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/myapp/server/
           rm -f deploy_key.pem
 
-      # Deploy with Docker Compose
-      - name: Deploy Docker containers
+      # Install backend dependencies
+      - name: Install dependencies
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/anline-store-cource || exit 1
-            
-            # Pull latest changes
-            git pull origin main
-            
-            # Ensure .env exists
-            if [ ! -f .env ]; then
-              echo "ERROR: .env file not found! Please create it on the server."
-              exit 1
-            fi
-            
-            # Stop old containers
-            docker-compose down
-            
-            # Start containers (no build needed, using pre-built images)
-            docker-compose up -d
-            
-            # Wait for services to be ready
-            echo "Waiting for services to start..."
-            sleep 15
-            
-            # Check service health
-            docker-compose ps
-            
-            # Show recent logs
-            echo "=== Recent logs ==="
-            docker-compose logs --tail=50
+            cd /var/www/myapp/server
+            npm ci
 
-      # Verify deployment
-      - name: Verify deployment
+      # Initialize migration state (one-time, safe to run multiple times)
+      - name: Initialize database migrations
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/anline-store-cource
-            
-            # Check if all containers are running
-            RUNNING=$(docker-compose ps | grep -c "Up")
-            if [ "$RUNNING" -lt 3 ]; then
-              echo "ERROR: Not all services are running!"
-              docker-compose logs
-              exit 1
+            cd /var/www/myapp/server
+            # Check if migrations are already initialized
+            if [ ! -f .migrations-initialized ]; then
+              echo "Initializing migration state for existing database..."
+              if echo "yes" | npm run migrate:init; then
+                touch .migrations-initialized
+                echo "✅ Migration state initialized successfully"
+              else
+                echo "❌ Migration initialization failed"
+                exit 1
+              fi
+            else
+              echo "✅ Migrations already initialized, skipping..."
             fi
-            
-            echo "✅ Deployment successful! All services running."
+
+      # Run pending migrations
+      - name: Run database migrations
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /var/www/myapp/server
+            npm run migrate
+            echo "✅ Migrations completed"
+
+      # Restart Node.js application
+      - name: Restart backend
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /var/www/myapp/server
+            pm2 describe myapp > /dev/null 2>&1 && pm2 restart myapp || pm2 start index.js --name "myapp"
+            pm2 save
 
       # Configure AWS credentials
       - name: Configure AWS credentials
