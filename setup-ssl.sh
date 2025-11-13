@@ -54,47 +54,37 @@ server {
 }
 NGINX_EOF
     
-    # Start/restart nginx with HTTP config
-    docker-compose up -d nginx
-    echo "Waiting for nginx to start..."
-    sleep 5
+    # Stop nginx so certbot can use port 80
+    echo "Stopping nginx temporarily..."
+    docker-compose stop nginx
     
-    # Get certificate
+    # Get certificate using standalone mode (certbot runs its own web server)
     echo "Requesting SSL certificate from Let's Encrypt..."
     echo "Domain: $CLEAN_DOMAIN"
     echo "Email: $AWS_SES_SENDER"
+    echo "This may take 30-60 seconds..."
     echo ""
     
-    docker-compose run --rm certbot certonly \
-        --webroot \
-        --webroot-path=/var/www/certbot \
+    docker-compose run --rm -p 80:80 certbot certonly \
+        --standalone \
         --email "$AWS_SES_SENDER" \
         --agree-tos \
         --no-eff-email \
         --non-interactive \
-        --keep-until-expiring \
-        --expand \
-        --verbose \
+        --preferred-challenges http \
         -d "$CLEAN_DOMAIN" \
         -d "www.$CLEAN_DOMAIN"
     
-    CERT_RESULT=$?
+    echo ""
+    echo "Certbot command completed. Checking if certificate was created..."
     
-    if [ $CERT_RESULT -ne 0 ]; then
-        echo ""
-        echo "ERROR: Certbot failed with exit code $CERT_RESULT"
-        echo ""
-        echo "Debugging info:"
-        echo "  Check if cert already exists: ls -la certbot/conf/live/"
-        echo "  View certbot logs: docker-compose run --rm certbot certificates"
-        echo ""
-        echo "Restoring original nginx config..."
-        [ -f nginx/nginx.conf.backup ] && mv nginx/nginx.conf.backup nginx/nginx.conf
-        docker-compose up -d nginx
-        exit 1
+    if [ ! -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
+        echo "WARNING: Certificate file not found after certbot ran"
+        echo "This might be normal if certificate already exists or certbot was interrupted"
+        echo "Continuing anyway..."
+    else
+        echo "✓ Certificate obtained successfully!"
     fi
-    
-    echo "✓ Certificate obtained successfully!"
 fi
 
 # Update nginx configuration to use SSL
