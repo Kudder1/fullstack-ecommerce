@@ -34,19 +34,18 @@ else
     cp nginx/nginx.conf nginx/nginx.conf.backup 2>/dev/null || true
     
     # Create temporary HTTP-only config with certbot challenge location
-    cat > nginx/nginx.conf << 'NGINX_EOF'
-resolver 127.0.0.11 valid=30s;
-
+    # This config doesn't reference the "server" container to avoid DNS issues
+    cat > nginx/nginx.conf << NGINX_EOF
 server {
     listen 80;
-    server_name _;
+    server_name $CLEAN_DOMAIN www.$CLEAN_DOMAIN;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
 
     location / {
-        return 200 'Certbot verification in progress';
+        return 200 'SSL certificate setup in progress...';
         add_header Content-Type text/plain;
     }
 }
