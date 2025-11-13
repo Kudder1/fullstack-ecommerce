@@ -25,8 +25,11 @@ mkdir -p certbot/conf
 mkdir -p certbot/www
 
 # Get certificate (skip if already exists)
-if [ -d "certbot/conf/live/$CLEAN_DOMAIN" ]; then
-    echo "Certificate already exists for $CLEAN_DOMAIN, skipping certbot..."
+if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
+    echo "✓ Certificate already exists for $CLEAN_DOMAIN"
+    echo "  Location: certbot/conf/live/$CLEAN_DOMAIN/"
+    echo "  Skipping certificate generation..."
+    echo ""
 else
     echo "Setting up HTTP-only nginx for certificate verification..."
     
@@ -68,9 +71,17 @@ NGINX_EOF
         -d www.$CLEAN_DOMAIN
     
     if [ $? -ne 0 ]; then
+        echo ""
         echo "ERROR: Failed to obtain SSL certificate"
+        echo "Check certbot logs: docker-compose run --rm certbot certificates"
+        echo ""
+        echo "Restoring original nginx config..."
+        [ -f nginx/nginx.conf.backup ] && mv nginx/nginx.conf.backup nginx/nginx.conf
+        docker-compose up -d nginx
         exit 1
     fi
+    
+    echo "✓ Certificate obtained successfully!"
 fi
 
 # Update nginx configuration to use SSL
