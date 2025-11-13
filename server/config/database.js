@@ -1,4 +1,8 @@
-require('dotenv').config({ path: process.env.NODE_ENV !== 'development' ? '/etc/app.env' : undefined, quiet: true });
+// Load .env for local development only (Docker injects env vars directly)
+if (process.env.NODE_ENV === 'development') {
+  require('dotenv').config({ path: '../.env', quiet: true });
+}
+
 const poolConfig = require('./poolConfig');
 
 module.exports = {
