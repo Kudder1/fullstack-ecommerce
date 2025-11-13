@@ -27,24 +27,28 @@ mkdir -p certbot/www
 # Stop nginx if running
 docker-compose stop nginx
 
-# Get certificate
-docker-compose run --rm certbot certonly --webroot \
-    --webroot-path=/var/www/certbot \
-    --email $AWS_SES_SENDER \
-    --agree-tos \
-    --no-eff-email \
-    -d $CLEAN_DOMAIN \
-    -d www.$CLEAN_DOMAIN
+# Get certificate (skip if already exists)
+if [ -d "certbot/conf/live/$CLEAN_DOMAIN" ]; then
+    echo "Certificate already exists for $CLEAN_DOMAIN, skipping certbot..."
+else
+    docker-compose run --rm certbot certonly --webroot \
+        --webroot-path=/var/www/certbot \
+        --email $AWS_SES_SENDER \
+        --agree-tos \
+        --no-eff-email \
+        --non-interactive \
+        -d $CLEAN_DOMAIN \
+        -d www.$CLEAN_DOMAIN
+fi
 
 # Update nginx configuration to use SSL
 echo "Copying nginx-ssl.conf to nginx.conf..."
 cp nginx/nginx-ssl.conf nginx/nginx.conf
 
-# Replace ${DOMAIN} with actual domain
-# Using @ as delimiter to avoid conflicts with slashes in URLs
-# The pattern ${DOMAIN} is literal text we're searching for
+# Replace ${DOMAIN} with actual domain using awk (more reliable than sed)
 echo "Replacing \${DOMAIN} with $CLEAN_DOMAIN..."
-sed -i "s@\${DOMAIN}@$CLEAN_DOMAIN@g" nginx/nginx.conf
+awk -v domain="$CLEAN_DOMAIN" '{gsub(/\$\{DOMAIN\}/, domain)}1' nginx/nginx.conf > nginx/nginx.conf.tmp
+mv nginx/nginx.conf.tmp nginx/nginx.conf
 
 # Verify the replacement worked
 echo ""
