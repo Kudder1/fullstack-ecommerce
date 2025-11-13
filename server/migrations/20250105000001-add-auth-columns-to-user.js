@@ -3,40 +3,54 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    // Add new columns to users table
-    await queryInterface.addColumn('users', 'googleId', {
-      type: Sequelize.STRING,
-      unique: true,
-      allowNull: true
-    });
+    const tableInfo = await queryInterface.describeTable('users');
+    
+    // Only add columns if they don't already exist
+    if (!tableInfo.googleId) {
+      await queryInterface.addColumn('users', 'googleId', {
+        type: Sequelize.STRING,
+        unique: true,
+        allowNull: true
+      });
+    }
 
-    await queryInterface.addColumn('users', 'emailVerified', {
-      type: Sequelize.BOOLEAN,
-      defaultValue: false,
-      allowNull: true
-    });
+    if (!tableInfo.emailVerified) {
+      await queryInterface.addColumn('users', 'emailVerified', {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false,
+        allowNull: true
+      });
+    }
 
-    await queryInterface.addColumn('users', 'emailVerificationId', {
-      type: Sequelize.STRING,
-      unique: true,
-      allowNull: true
-    });
+    if (!tableInfo.emailVerificationId) {
+      await queryInterface.addColumn('users', 'emailVerificationId', {
+        type: Sequelize.STRING,
+        unique: true,
+        allowNull: true
+      });
+    }
 
-    await queryInterface.addColumn('users', 'emailVerificationIdExpireDate', {
-      type: Sequelize.DATE,
-      allowNull: true
-    });
+    if (!tableInfo.emailVerificationIdExpireDate) {
+      await queryInterface.addColumn('users', 'emailVerificationIdExpireDate', {
+        type: Sequelize.DATE,
+        allowNull: true
+      });
+    }
 
-    await queryInterface.addColumn('users', 'passwordResetId', {
-      type: Sequelize.STRING,
-      unique: true,
-      allowNull: true
-    });
+    if (!tableInfo.passwordResetId) {
+      await queryInterface.addColumn('users', 'passwordResetId', {
+        type: Sequelize.STRING,
+        unique: true,
+        allowNull: true
+      });
+    }
 
-    await queryInterface.addColumn('users', 'passwordResetIdExpireDate', {
-      type: Sequelize.DATE,
-      allowNull: true
-    });
+    if (!tableInfo.passwordResetIdExpireDate) {
+      await queryInterface.addColumn('users', 'passwordResetIdExpireDate', {
+        type: Sequelize.DATE,
+        allowNull: true
+      });
+    }
 
     // Change password column to allow NULL (for Google OAuth users)
     await queryInterface.changeColumn('users', 'password', {
