@@ -31,7 +31,7 @@ docker-compose run --rm certbot certonly --webroot \
 
 # Update nginx configuration to use SSL
 cp nginx/nginx-ssl.conf nginx/nginx.conf
-sed -i "s/\${DOMAIN}/$DOMAIN/g" nginx/nginx.conf
+sed -i "s|\${DOMAIN}|$DOMAIN|g" nginx/nginx.conf
 
 # Restart nginx
 docker-compose up -d nginx
