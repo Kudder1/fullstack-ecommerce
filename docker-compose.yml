@@ -75,15 +75,16 @@ services:
     container_name: ecommerce-nginx
     restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_started
     ports:
       - "80:80"
       - "443:443"
     volumes:
       # Pre-built React frontend (from GitHub Actions)
       - ./client/dist:/usr/share/nginx/html:ro
-      # Nginx configuration
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Nginx configuration (writable so setup-ssl.sh can update it)
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
       # SSL certificates (for production with Let's Encrypt)
       - ./certbot/conf:/etc/letsencrypt:ro
       - ./certbot/www:/var/www/certbot:ro
