@@ -24,13 +24,41 @@ echo "Generating SSL certificate for $CLEAN_DOMAIN..."
 mkdir -p certbot/conf
 mkdir -p certbot/www
 
-# Stop nginx if running
-docker-compose stop nginx
-
 # Get certificate (skip if already exists)
 if [ -d "certbot/conf/live/$CLEAN_DOMAIN" ]; then
     echo "Certificate already exists for $CLEAN_DOMAIN, skipping certbot..."
 else
+    echo "Setting up HTTP-only nginx for certificate verification..."
+    
+    # Temporarily use HTTP-only config so nginx can serve certbot challenges
+    cp nginx/nginx.conf nginx/nginx.conf.backup 2>/dev/null || true
+    
+    # Create temporary HTTP-only config with certbot challenge location
+    cat > nginx/nginx.conf << 'NGINX_EOF'
+resolver 127.0.0.11 valid=30s;
+
+server {
+    listen 80;
+    server_name _;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 200 'Certbot verification in progress';
+        add_header Content-Type text/plain;
+    }
+}
+NGINX_EOF
+    
+    # Start/restart nginx with HTTP config
+    docker-compose up -d nginx
+    echo "Waiting for nginx to start..."
+    sleep 5
+    
+    # Get certificate
+    echo "Requesting SSL certificate from Let's Encrypt..."
     docker-compose run --rm certbot certonly --webroot \
         --webroot-path=/var/www/certbot \
         --email $AWS_SES_SENDER \
@@ -39,6 +67,11 @@ else
         --non-interactive \
         -d $CLEAN_DOMAIN \
         -d www.$CLEAN_DOMAIN
+    
+    if [ $? -ne 0 ]; then
+        echo "ERROR: Failed to obtain SSL certificate"
+        exit 1
+    fi
 fi
 
 # Update nginx configuration to use SSL
