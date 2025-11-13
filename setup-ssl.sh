@@ -61,19 +61,32 @@ NGINX_EOF
     
     # Get certificate
     echo "Requesting SSL certificate from Let's Encrypt..."
-    docker-compose run --rm certbot certonly --webroot \
+    echo "Domain: $CLEAN_DOMAIN"
+    echo "Email: $AWS_SES_SENDER"
+    echo ""
+    
+    docker-compose run --rm certbot certonly \
+        --webroot \
         --webroot-path=/var/www/certbot \
-        --email $AWS_SES_SENDER \
+        --email "$AWS_SES_SENDER" \
         --agree-tos \
         --no-eff-email \
         --non-interactive \
-        -d $CLEAN_DOMAIN \
-        -d www.$CLEAN_DOMAIN
+        --keep-until-expiring \
+        --expand \
+        --verbose \
+        -d "$CLEAN_DOMAIN" \
+        -d "www.$CLEAN_DOMAIN"
     
-    if [ $? -ne 0 ]; then
+    CERT_RESULT=$?
+    
+    if [ $CERT_RESULT -ne 0 ]; then
         echo ""
-        echo "ERROR: Failed to obtain SSL certificate"
-        echo "Check certbot logs: docker-compose run --rm certbot certificates"
+        echo "ERROR: Certbot failed with exit code $CERT_RESULT"
+        echo ""
+        echo "Debugging info:"
+        echo "  Check if cert already exists: ls -la certbot/conf/live/"
+        echo "  View certbot logs: docker-compose run --rm certbot certificates"
         echo ""
         echo "Restoring original nginx config..."
         [ -f nginx/nginx.conf.backup ] && mv nginx/nginx.conf.backup nginx/nginx.conf
