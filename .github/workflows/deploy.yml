@@ -114,6 +114,27 @@ jobs:
             echo "=== Recent logs ==="
             docker-compose logs --tail=50
 
+      # Setup SSL certificates
+      - name: Setup SSL certificates
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/fullstack-ecommerce || exit 1
+            
+            echo "Setting up SSL certificates..."
+            chmod +x setup-ssl.sh
+            ./setup-ssl.sh
+            
+            # Restart nginx with SSL config
+            echo "Restarting nginx with SSL configuration..."
+            docker-compose restart nginx
+            
+            sleep 5
+            docker-compose logs nginx --tail=20
+
       # Verify deployment
       - name: Verify deployment
         uses: appleboy/ssh-action@v1.2.0
