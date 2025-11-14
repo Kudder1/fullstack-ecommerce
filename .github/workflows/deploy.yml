@@ -29,19 +29,18 @@ jobs:
           npm ci
           npm run build
 
-      # Setup /var/www/myapp directory (one-time migration)
-      - name: Setup new app directory
+      # Setup new app directory (for git repository)
+      - name: Setup git repository directory
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Create directory if it doesn't exist
-            sudo mkdir -p /var/www/myapp
-            sudo chown -R ubuntu:ubuntu /var/www/myapp
+            # Ensure main directory exists
+            mkdir -p ~/fullstack-ecommerce
 
-      # Copy pre-built frontend to EC2
+      # Copy pre-built frontend to EC2 (to git repo location)
       - name: Copy frontend to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -49,7 +48,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "client/dist/*"
-          target: "/var/www/myapp/client/dist"
+          target: "~/fullstack-ecommerce/client/dist"
           strip_components: 2
           overwrite: true
 
@@ -64,7 +63,7 @@ jobs:
             --exclude 'public' \
             --exclude '.migrations-initialized' \
             -e "ssh -i deploy_key.pem -o StrictHostKeyChecking=no" \
-            server/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/myapp/server/
+            server/ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/fullstack-ecommerce/server/
           rm -f deploy_key.pem
 
       # Deploy with Docker Compose
@@ -75,7 +74,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/anline-store-cource || exit 1
+            cd ~/fullstack-ecommerce || exit 1
             
             # Pull latest changes
             git pull origin main
@@ -111,7 +110,7 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd ~/anline-store-cource
+            cd ~/fullstack-ecommerce
             
             # Check if all containers are running
             RUNNING=$(docker-compose ps | grep -c "Up")
