@@ -18,11 +18,6 @@ CLEAN_DOMAIN="${CLEAN_DOMAIN#http://}"
 echo "Original DOMAIN: $DOMAIN"
 echo "Clean domain: $CLEAN_DOMAIN"
 echo ""
-echo "Generating SSL certificate for $CLEAN_DOMAIN..."
-
-# Create necessary directories
-mkdir -p certbot/conf
-mkdir -p certbot/www
 
 # Get certificate (skip if already exists)
 if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
@@ -31,96 +26,113 @@ if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
     echo "  Skipping certificate generation..."
     echo ""
 else
-    echo "Setting up HTTP-only nginx for certificate verification..."
-    
-    # Temporarily use HTTP-only config so nginx can serve certbot challenges
-    cp nginx/nginx.conf nginx/nginx.conf.backup 2>/dev/null || true
-    
-    # Create temporary HTTP-only config with certbot challenge location
-    # This config doesn't reference the "server" container to avoid DNS issues
-    cat > nginx/nginx.conf << NGINX_EOF
-server {
-    listen 80;
-    server_name $CLEAN_DOMAIN www.$CLEAN_DOMAIN;
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 200 'SSL certificate setup in progress...';
-        add_header Content-Type text/plain;
-    }
-}
-NGINX_EOF
-    
-    # Stop nginx so certbot can use port 80
-    echo "Stopping nginx temporarily..."
-    docker-compose stop nginx
-    
-    # Get certificate using standalone mode (certbot runs its own web server)
-    echo "Requesting SSL certificate from Let's Encrypt..."
+    echo "Certificate not found. Requesting from Let's Encrypt..."
     echo "Domain: $CLEAN_DOMAIN"
     echo "Email: $AWS_SES_SENDER"
-    echo "This may take 30-60 seconds..."
     echo ""
     
-    docker-compose run --rm -p 80:80 certbot certonly \
-        --standalone \
-        --email "$AWS_SES_SENDER" \
-        --agree-tos \
-        --no-eff-email \
-        --non-interactive \
-        --preferred-challenges http \
-        -d "$CLEAN_DOMAIN" \
-        -d "www.$CLEAN_DOMAIN"
+    # Create necessary directories with proper permissions
+    mkdir -p certbot/conf certbot/www
     
+    # Stop nginx to free up port 80
+    echo "Stopping nginx temporarily..."
+    docker-compose stop nginx || true
+    sleep 2
+    
+    # Request certificate using standalone mode with retries
+    echo "Requesting SSL certificate from Let's Encrypt (this may take 60-90 seconds)..."
     echo ""
-    echo "Certbot command completed. Checking if certificate was created..."
     
-    if [ ! -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
-        echo "WARNING: Certificate file not found after certbot ran"
-        echo "This might be normal if certificate already exists or certbot was interrupted"
-        echo "Continuing anyway..."
-    else
-        echo "✓ Certificate obtained successfully!"
+    MAX_RETRIES=3
+    RETRY_COUNT=0
+    
+    while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+        echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES..."
+        
+        docker-compose run --rm --entrypoint certbot certbot certonly \
+            --standalone \
+            --email "$AWS_SES_SENDER" \
+            --agree-tos \
+            --no-eff-email \
+            --non-interactive \
+            --preferred-challenges http \
+            -d "$CLEAN_DOMAIN" \
+            -d "www.$CLEAN_DOMAIN" \
+            2>&1
+        
+        CERT_STATUS=$?
+        
+        if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
+            echo ""
+            echo "✓ Certificate obtained successfully!"
+            break
+        elif [ $RETRY_COUNT -lt $((MAX_RETRIES - 1)) ]; then
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Certificate request failed. Retrying in 10 seconds..."
+            sleep 10
+        else
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo ""
+            echo "WARNING: Certificate request failed after $RETRY_COUNT attempts"
+            echo "This may be because:"
+            echo "  1. Port 80 is not accessible from the internet"
+            echo "  2. Your domain DNS is not pointing to this server"
+            echo "  3. Let's Encrypt rate limit exceeded"
+            echo ""
+            echo "Continuing with HTTP-only configuration..."
+        fi
+    done
+fi
+
+# Check if we have an SSL certificate
+if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
+    echo ""
+    echo "Setting up SSL configuration..."
+    
+    # Update nginx configuration to use SSL
+    echo "Copying nginx-ssl.conf to nginx.conf..."
+    cp nginx/nginx-ssl.conf nginx/nginx.conf
+    
+    # Replace ${DOMAIN} with actual domain
+    echo "Replacing \${DOMAIN} with $CLEAN_DOMAIN..."
+    sed -i "s|\${DOMAIN}|$CLEAN_DOMAIN|g" nginx/nginx.conf
+    
+    # Verify the replacement worked
+    echo ""
+    echo "=== Verification ==="
+    echo "Checking server_name lines:"
+    grep "server_name" nginx/nginx.conf | head -2
+    echo ""
+    echo "Checking SSL certificate paths:"
+    grep "ssl_certificate" nginx/nginx.conf
+    echo ""
+    
+    # Check if replacement actually worked
+    if grep -q '\${DOMAIN}' nginx/nginx.conf; then
+        echo "ERROR: Domain replacement failed! \${DOMAIN} still present in config"
+        exit 1
     fi
+    
+    echo "✓ Domain replacement successful!"
+    
+    # Restart nginx with SSL config
+    echo "Starting nginx with SSL configuration..."
+    docker-compose up -d nginx
+    sleep 3
+    
+    echo ""
+    echo "==================================="
+    echo "✓ SSL setup completed successfully!"
+    echo "✓ Your site is now accessible at https://$CLEAN_DOMAIN"
+    echo "==================================="
+else
+    echo ""
+    echo "Keeping HTTP-only configuration"
+    echo "Site will remain accessible at http://$CLEAN_DOMAIN"
+    echo ""
+    echo "To request a certificate later, run: ./setup-ssl.sh"
+    
+    # Restart nginx with HTTP config
+    echo "Starting nginx..."
+    docker-compose up -d nginx
 fi
-
-# Update nginx configuration to use SSL
-echo "Copying nginx-ssl.conf to nginx.conf..."
-cp nginx/nginx-ssl.conf nginx/nginx.conf
-
-# Replace ${DOMAIN} with actual domain using awk (more reliable than sed)
-echo "Replacing \${DOMAIN} with $CLEAN_DOMAIN..."
-awk -v domain="$CLEAN_DOMAIN" '{gsub(/\$\{DOMAIN\}/, domain)}1' nginx/nginx.conf > nginx/nginx.conf.tmp
-mv nginx/nginx.conf.tmp nginx/nginx.conf
-
-# Verify the replacement worked
-echo ""
-echo "=== Verification ==="
-echo "Checking server_name lines:"
-grep "server_name" nginx/nginx.conf | head -2
-echo ""
-echo "Checking SSL certificate paths:"
-grep "ssl_certificate" nginx/nginx.conf
-echo ""
-
-# Check if replacement actually worked
-if grep -q '${DOMAIN}' nginx/nginx.conf; then
-    echo "ERROR: Domain replacement failed! \${DOMAIN} still present in config"
-    exit 1
-fi
-
-echo "✓ Domain replacement successful!"
-
-# Restart nginx
-echo "Restarting nginx with new configuration..."
-docker-compose up -d nginx
-
-echo ""
-echo "==================================="
-echo "✓ SSL certificate generated successfully!"
-echo "✓ Nginx configuration updated"
-echo "✓ Your site is now accessible at https://$CLEAN_DOMAIN"
-echo "==================================="

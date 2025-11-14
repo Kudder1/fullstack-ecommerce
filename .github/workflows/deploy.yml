@@ -114,9 +114,10 @@ jobs:
             echo "=== Recent logs ==="
             docker-compose logs --tail=50
 
-      # Setup SSL certificates
+      # Setup SSL certificates (non-blocking - site works with HTTP if this fails)
       - name: Setup SSL certificates
         uses: appleboy/ssh-action@v1.2.0
+        continue-on-error: true
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
@@ -124,13 +125,13 @@ jobs:
           script: |
             cd ~/fullstack-ecommerce || exit 1
             
-            echo "Setting up SSL certificates..."
+            echo "Attempting to setup SSL certificates..."
             chmod +x setup-ssl.sh
-            ./setup-ssl.sh
+            ./setup-ssl.sh || true
             
-            # Restart nginx with SSL config
-            echo "Restarting nginx with SSL configuration..."
-            docker-compose restart nginx
+            # Ensure nginx is running (with or without SSL)
+            echo "Ensuring nginx is running..."
+            docker-compose up -d nginx
             
             sleep 5
             docker-compose logs nginx --tail=20
