@@ -37,9 +37,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Ensure main directory and client/dist exist with proper permissions
+            # Ensure client/dist directory exists with proper permissions
             mkdir -p ~/fullstack-ecommerce/client/dist
-            chmod -R 755 ~/fullstack-ecommerce
+            chmod 755 ~/fullstack-ecommerce/client/dist
 
       # Copy pre-built frontend to EC2 (to git repo location)
       - name: Copy frontend to EC2
