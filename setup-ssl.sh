@@ -34,9 +34,9 @@ else
     # Create necessary directories with proper permissions
     mkdir -p certbot/conf certbot/www
     
-    # Stop nginx to free up port 80
-    echo "Stopping nginx temporarily..."
-    docker-compose stop nginx || true
+    # Stop and remove nginx container to free up port 80
+    echo "Stopping and removing nginx container..."
+    docker-compose rm -f nginx || true
     sleep 2
     
     # Request certificate using standalone mode with retries
