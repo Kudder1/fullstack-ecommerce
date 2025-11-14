@@ -34,10 +34,10 @@ else
     # Create necessary directories with proper permissions
     mkdir -p certbot/conf certbot/www
     
-    # Stop and remove nginx container to free up port 80
-    echo "Stopping and removing nginx container..."
-    docker-compose rm -f nginx || true
-    sleep 2
+    # Stop ALL containers to free up port 80 (nginx must not be running)
+    echo "Stopping all containers to free port 80..."
+    docker-compose down || true
+    sleep 3
     
     # Request certificate using standalone mode with retries
     echo "Requesting SSL certificate from Let's Encrypt (this may take 60-90 seconds)..."
@@ -115,9 +115,9 @@ if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
     
     echo "✓ Domain replacement successful!"
     
-    # Restart nginx with SSL config
-    echo "Starting nginx with SSL configuration..."
-    docker-compose up -d nginx
+    # Restart all containers with SSL config
+    echo "Starting all containers with SSL configuration..."
+    docker-compose up -d
     sleep 3
     
     echo ""
