@@ -63,7 +63,6 @@ services:
       PAYPAL_CLIENT_SECRET: ${PAYPAL_CLIENT_SECRET}
       PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID}
     volumes:
-      - server_static:/app/static
       # Host static files (images uploaded/stored on host)
       - ./server/static:/app/static:ro
     networks:
@@ -112,4 +111,3 @@ networks:
 
 volumes:
   postgres_data:
-  server_static:
