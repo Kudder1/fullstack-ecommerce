@@ -139,16 +139,53 @@ if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
     
     echo "✓ Domain replacement successful!"
     
-    # Restart all containers with SSL config
-    echo "Starting all containers with SSL configuration..."
-    docker-compose up -d
+    # Restart all containers with SSL config (exactly as manually done on SSH)
+    echo "Restarting nginx with SSL configuration..."
+    docker-compose restart nginx
     sleep 3
+    
+    # Verify HTTPS is actually listening on port 443
+    echo ""
+    echo "=== Verifying HTTPS Configuration ==="
+    echo "Checking if ports 80 and 443 are listening..."
+    
+    if docker-compose exec -T nginx netstat -tlnp 2>/dev/null | grep -q "0.0.0.0:443.*LISTEN"; then
+        echo "✓ Nginx is listening on port 443 (HTTPS)"
+    else
+        echo "⚠ Port 443 not found. Attempting full restart..."
+        docker-compose down
+        docker-compose up -d
+        sleep 4
+        
+        if docker-compose exec -T nginx netstat -tlnp 2>/dev/null | grep -q "0.0.0.0:443.*LISTEN"; then
+            echo "✓ After full restart, nginx is now listening on port 443"
+        else
+            echo "ERROR: Port 443 still not listening after restart!"
+            docker-compose logs nginx | tail -20
+            exit 1
+        fi
+    fi
+    
+    # Show listening ports
+    echo ""
+    echo "Active ports:"
+    docker-compose exec -T nginx netstat -tlnp 2>/dev/null | grep "0.0.0.0.*LISTEN" | grep nginx
     
     echo ""
     echo "==================================="
     echo "✓ SSL setup completed successfully!"
     echo "✓ Your site is now accessible at https://$CLEAN_DOMAIN"
     echo "==================================="
+    echo ""
+    echo "Testing HTTPS connectivity..."
+    if command -v curl > /dev/null; then
+        HTTPS_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" https://$CLEAN_DOMAIN/ 2>/dev/null || echo "000")
+        if [ "$HTTPS_RESPONSE" = "200" ] || [ "$HTTPS_RESPONSE" = "304" ]; then
+            echo "✓ HTTPS is responding with HTTP $HTTPS_RESPONSE"
+        else
+            echo "⚠ HTTPS returned HTTP $HTTPS_RESPONSE (check if DNS/firewall allows external connections)"
+        fi
+    fi
 else
     echo ""
     echo "Keeping HTTP-only configuration"
