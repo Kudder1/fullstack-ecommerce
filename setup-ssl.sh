@@ -72,6 +72,15 @@ else
         
         CERT_STATUS=$?
         
+        # Copy certificates from container to host (in case volume mount failed)
+        if [ $CERT_STATUS -eq 0 ] || [ $((RETRY_COUNT + 1)) -eq $MAX_RETRIES ]; then
+            echo "Copying certificates from container to host..."
+            docker cp ecommerce-certbot:/etc/letsencrypt/live/$CLEAN_DOMAIN ./certbot/conf/live/ 2>/dev/null || true
+            docker cp ecommerce-certbot:/etc/letsencrypt/archive/$CLEAN_DOMAIN ./certbot/conf/archive/ 2>/dev/null || true
+            sudo chmod -R 755 certbot/conf/live/ 2>/dev/null || true
+            sudo chmod -R 755 certbot/conf/archive/ 2>/dev/null || true
+        fi
+        
         # Check if certificate was successfully obtained
         if [ -d "certbot/conf/live/$CLEAN_DOMAIN" ]; then
             echo ""
