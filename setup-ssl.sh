@@ -39,7 +39,12 @@ else
     docker-compose down || true
     sleep 3
     
-    # Request certificate using standalone mode with retries
+    # Start only nginx for webroot verification
+    echo "Starting nginx for certificate verification..."
+    docker-compose up -d nginx
+    sleep 3
+    
+    # Request certificate using webroot method
     echo "Requesting SSL certificate from Let's Encrypt (this may take 60-90 seconds)..."
     echo ""
     
@@ -50,7 +55,8 @@ else
         echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES..."
         
         docker-compose run --rm --entrypoint certbot certbot certonly \
-            --standalone \
+            --webroot \
+            --webroot-path /var/www/certbot \
             --email "$AWS_SES_SENDER" \
             --agree-tos \
             --no-eff-email \
