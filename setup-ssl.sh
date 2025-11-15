@@ -54,7 +54,11 @@ else
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
         echo "Attempt $((RETRY_COUNT + 1)) of $MAX_RETRIES..."
         
-        docker-compose run --rm --entrypoint certbot certbot certonly \
+        # Start certbot container to use persistent volumes
+        docker-compose up -d certbot
+        sleep 2
+        
+        docker-compose exec -T certbot certbot certonly \
             --webroot \
             --webroot-path /var/www/certbot \
             --email "$AWS_SES_SENDER" \
@@ -68,10 +72,15 @@ else
         
         CERT_STATUS=$?
         
-        if [ -f "certbot/conf/live/$CLEAN_DOMAIN/fullchain.pem" ]; then
+        # Check if certificate was successfully obtained
+        if [ -d "certbot/conf/live/$CLEAN_DOMAIN" ]; then
             echo ""
             echo "✓ Certificate obtained successfully!"
-            break
+            RETRY_COUNT=$MAX_RETRIES  # Exit the loop
+        elif [ $CERT_STATUS -eq 0 ]; then
+            echo ""
+            echo "✓ Certificate obtained successfully!"
+            RETRY_COUNT=$MAX_RETRIES  # Exit the loop
         elif [ $RETRY_COUNT -lt $((MAX_RETRIES - 1)) ]; then
             RETRY_COUNT=$((RETRY_COUNT + 1))
             echo "Certificate request failed. Retrying in 10 seconds..."
